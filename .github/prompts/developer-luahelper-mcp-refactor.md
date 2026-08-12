@@ -1,6 +1,6 @@
 # Prompt: Developer — LuaHelper MCP Server Phase 0 Refactoring
 
-> Use this agent: `dotnet-senior-developer` (or any coding agent)
+> Use this agent: `acp-developer` (or any coding agent)
 > Context:
 >   - `.github\docs\arch-luahelper-mcp-server.md` — architecture
 >   - `.github\docs\dev-plan-luahelper-mcp-server.md` — development plan
