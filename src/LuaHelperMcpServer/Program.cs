@@ -15,7 +15,12 @@ builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace;
 });
 
-builder.Services.AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly();
+builder
+    .Services.AddMcpServer()
+    .WithStdioServerTransport()
+    .WithToolsFromAssembly()
+    .WithResourcesFromAssembly()
+    .WithPromptsFromAssembly();
 
 builder.Services.AddLuaHelperServices(lualspPath);
 

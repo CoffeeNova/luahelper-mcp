@@ -129,8 +129,10 @@ graph LR
 | Component | Responsibility | Dependencies |
 |---|---|---|
 | `Program.cs` | DI container setup, host configuration, stdio transport registration | MCP SDK, all services |
-| `LuaDiagnosticTools` | MCP tool definitions (`check_lua_file`, `check_lua_project`, etc.) | `ILspClient`, `IDiagnosticCache` |
-| `ConfigTools` | MCP tools for config management (`get_config`, `set_check_flag`) | `IConfigService` |
+| `LuaDiagnosticTools` | MCP tool definitions (`check_lua_file`, `check_lua_project`, `get_supported_checks`, `get_luahelper_version`) | `ILspClient`, `IDiagnosticCache`, `IConfigService` |
+| `ConfigTools` | MCP tools for config management (`get_luahelper_config`, `create_luahelper_json`) | `IConfigService` |
+| `DiagnosticResources` | MCP resources (`luahelper://diagnostics/{+filePath}`, `luahelper://config`) | `ILspClient`, `IDiagnosticCache`, `IConfigService` |
+| `LuaHelperPrompts` | MCP prompts (`fix_lua_warnings`, `configure_luahelper`) | — |
 | `ILspClient` / `LspClient` | LSP protocol implementation: initialize, didOpen, receive diagnostics | `IProcessManager`, `LspMessageReader`, `LspMessageWriter` |
 | `IProcessManager` / `ProcessManager` | Spawn, monitor, restart, and kill `lualsp.exe` | `System.Diagnostics.Process` |
 | `IDiagnosticCache` / `DiagnosticCache` | Store and retrieve diagnostics by file URI | — |
@@ -728,6 +730,49 @@ public sealed class ConfigTools
 
 ---
 
+### 6.7 MCP Resources
+
+Resources are defined via `[McpServerResourceType]` / `[McpServerResource]` attributes in `src/LuaHelperMcpServer/Resources/DiagnosticResources.cs` and registered with `WithResourcesFromAssembly()`. All resource JSON output uses camelCase.
+
+```csharp
+[McpServerResourceType]
+public sealed class DiagnosticResources
+{
+    [McpServerResource(UriTemplate = "luahelper://diagnostics/{+filePath}", Name = "Diagnostics", ...)]
+    public ResourceContents GetDiagnostics([Description("...")] string filePath, ...) { ... }
+
+    [McpServerResource(UriTemplate = "luahelper://config", Name = "Config", ...)]
+    public ResourceContents GetConfig(...) { ... }
+}
+```
+
+Key behaviors:
+- The SDK surfaces **fixed-URI** resources via `resources/list` and **URI-template** resources via `resources/templates/list`. `luahelper://config` appears under `resources/list`; `luahelper://diagnostics/{+filePath}` under `resources/templates/list`.
+- The `{+var}` (reserved expansion) form must be used for `filePath` because the default `{var}` form cannot match URI paths containing `/` (Windows drive paths arrive as `E:/...`).
+- The SDK URI template engine binds parameters as URI-unescaped strings, so `filePath` arrives already decoded.
+- `resources/read` on `luahelper://diagnostics/{filePath}` reuses the LSP diagnostics path: open the file if needed, wait on `publishDiagnostics`, return cached or fetched results.
+
+### 6.8 MCP Prompts
+
+Prompts are defined via `[McpServerPromptType]` / `[McpServerPrompt]` in `src/LuaHelperMcpServer/Prompts/LuaHelperPrompts.cs` and registered with `WithPromptsFromAssembly()`.
+
+```csharp
+[McpServerPromptType]
+public static class LuaHelperPrompts
+{
+    [McpServerPrompt(Name = "fix_lua_warnings", Title = "Fix Lua warnings")]
+    public static ChatMessage FixLuaWarnings(
+        [Description("Absolute path to the .lua file to fix")] string filePath)
+        => new(ChatRole.User, $"Analyze the Lua file at {filePath} and suggest fixes ...");
+}
+```
+
+Key behaviors:
+- Prompt methods return `ChatMessage` (from `Microsoft.Extensions.AI`); a returned array is rendered as `messages`.
+- `[McpServerPrompt]` arguments map to `prompts/get` arguments; `required` is inferred from non-optional parameters.
+
+---
+
 ## 7. Error Handling
 
 ### Error Categories and Strategies
@@ -1113,7 +1158,7 @@ LuaHelperMcpServer.Tests/
 
 | Task | DoD |
 |---|---|
-| Implement `get_supported_checks` tool | Returns all 22 check types with descriptions |
+| Implement `get_supported_checks` tool | Returns all 21 check types (research doc section 4) with descriptions |
 | Implement `get_luahelper_version` tool | Returns version string |
 | Implement `get_luahelper_config` tool | Returns current config as JSON |
 | Implement `create_luahelper_json` tool | Creates default config file in project root |

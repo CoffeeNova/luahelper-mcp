@@ -35,6 +35,8 @@ public sealed class LspClient : ILspClient, IDisposable
 
     public LspState State => _state;
 
+    public string? ProjectPath => _projectPath;
+
     public LspClient(
         IProcessManager processManager,
         IDiagnosticCache cache,
@@ -245,6 +247,7 @@ public sealed class LspClient : ILspClient, IDisposable
         catch (OperationCanceledException)
         {
             _logger.LogWarning("Timeout waiting for diagnostics for {File}", filePath);
+            _pendingDiagnostics.TryRemove(uri, out _);
             return _cache.GetDiagnostics(uri) ?? new List<LuaDiagnostic>();
         }
     }

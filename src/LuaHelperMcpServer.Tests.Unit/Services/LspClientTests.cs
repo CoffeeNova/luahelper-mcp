@@ -50,6 +50,19 @@ public class LspClientTests
     }
 
     [Test]
+    public async Task EnsureInitializedAsync_SetsProjectPath()
+    {
+        _fakeServer.Start();
+
+        await _client.EnsureInitializedAsync(
+            "C:\\test",
+            new LuaHelperConfig { PluginPath = "C:\\test" }
+        );
+
+        Assert.That(_client.ProjectPath, Is.EqualTo("C:\\test"));
+    }
+
+    [Test]
     public async Task OpenFileAsync_SendsDidOpen()
     {
         var testFile = "C:\\test\\test.lua";

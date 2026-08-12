@@ -652,10 +652,12 @@ See architecture doc section 6.6.
 3. `get_luahelper_config` — returns current config as JSON
 4. `create_luahelper_json` — creates default `luahelper.json` in project root
 
+> Note: research doc section 4 lists **21** check types (not 22); `get_supported_checks` returns those 21 with their research-doc default enablement.
+
 **DoD:**
-- [ ] All 6 tools defined
-- [ ] `tools/list` returns all 6 tools
-- [ ] Each tool returns correct output when called
+- [x] All 6 tools defined
+- [x] `tools/list` returns all 6 tools
+- [x] Each tool returns correct output when called
 
 ---
 
@@ -675,9 +677,9 @@ Replace the `Task.Delay(2000)` hack with a proper wait:
 Instead of `Task.Delay(2000)`, track how many files were opened and wait for all diagnostic notifications (with a global timeout of 30s).
 
 **DoD:**
-- [ ] No more `Task.Delay` hacks
-- [ ] `GetDiagnosticsAsync` waits for `publishDiagnostics` with 10s timeout
-- [ ] `check_lua_project` waits for all files with 30s global timeout
+- [x] No more `Task.Delay` hacks
+- [x] `GetDiagnosticsAsync` waits for `publishDiagnostics` with 10s timeout
+- [x] `check_lua_project` waits for all files with 30s global timeout
 
 ---
 
@@ -692,9 +694,11 @@ Implement MCP resources using the C# SDK resource handlers:
 
 **Note:** Check the MCP C# SDK docs for the exact resource registration API. It may use `[McpServerResource]` attributes or handler-based registration via `McpServerOptions`.
 
+> Note: the C# SDK surfaces fixed-URI resources via `resources/list` and URI-template resources via `resources/templates/list`. `luahelper://config` is listed under `resources/list`; `luahelper://diagnostics/{+filePath}` is listed under `resources/templates/list` (the `{+var}` form allows slashes in Windows paths).
+
 **DoD:**
-- [ ] `resources/list` returns the 2 resources
-- [ ] `resources/read` returns content for each resource
+- [x] `resources/list` returns the 2 resources
+- [x] `resources/read` returns content for each resource
 
 ---
 
@@ -706,9 +710,9 @@ Implement MCP resources using the C# SDK resource handlers:
 2. `configure_luahelper` — template: "Help me configure luahelper.json for my Lua project at {projectPath}. Consider the WoW API globals that should be ignored."
 
 **DoD:**
-- [ ] `prompts/list` returns the 2 prompts
-- [ ] `prompts/get` returns the prompt text
-- [ ] **Phase 2 complete** ✅
+- [x] `prompts/list` returns the 2 prompts
+- [x] `prompts/get` returns the prompt text
+- [x] **Phase 2 complete** ✅
 
 ---
 

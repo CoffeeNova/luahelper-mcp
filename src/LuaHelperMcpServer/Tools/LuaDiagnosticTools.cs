@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text;
+using System.Text.Json;
 using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
 using ModelContextProtocol.Server;
@@ -9,6 +10,142 @@ namespace LuaHelperMcpServer.Tools;
 [McpServerToolType]
 public sealed class LuaDiagnosticTools
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    private static readonly SupportedCheck[] SupportedChecks =
+    [
+        new()
+        {
+            Id = 1,
+            Name = "Syntax errors",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 2,
+            Name = "Variable not defined",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 3,
+            Name = "Global used before defined",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 4,
+            Name = "Local defined but not used",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 5,
+            Name = "Duplicate table keys",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 6,
+            Name = "Referenced file not found",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 7,
+            Name = "Assignment param count mismatch",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 8,
+            Name = "Local definition param count mismatch",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 9,
+            Name = "Goto label not found",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 10,
+            Name = "Function call param count > definition",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 11,
+            Name = "Import module var not defined",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 12,
+            Name = "If-not block error",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 13,
+            Name = "Duplicate function params",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 14,
+            Name = "Duplicate binary expression",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 15,
+            Name = "OR always true",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 16,
+            Name = "AND always false",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 17,
+            Name = "Unused assignment",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 18,
+            Name = "Annotation type warnings",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 19,
+            Name = "Duplicate if conditions",
+            DefaultOn = true,
+        },
+        new()
+        {
+            Id = 20,
+            Name = "Self-assignment",
+            DefaultOn = false,
+        },
+        new()
+        {
+            Id = 21,
+            Name = "Float equality",
+            DefaultOn = false,
+        },
+    ];
+
     private readonly ILspClient _lspClient;
     private readonly IDiagnosticCache _cache;
     private readonly IConfigService _configService;
@@ -67,16 +204,34 @@ public sealed class LuaDiagnosticTools
         foreach (var file in luaFiles)
             await _lspClient.OpenFileAsync(file, ct);
 
-        // Wait for diagnostics to arrive (improved in Phase 2)
-        await Task.Delay(TimeSpan.FromSeconds(2), ct);
+        var diagnosticTasks = luaFiles
+            .Select(file => _lspClient.GetDiagnosticsAsync(file, ct))
+            .ToArray();
+        var diagnostics = await Task.WhenAll(diagnosticTasks)
+            .WaitAsync(TimeSpan.FromSeconds(30), ct);
 
-        var allDiags = _lspClient.GetAllDiagnostics();
-        var collection = new DiagnosticCollection
-        {
-            ProjectPath = projectPath,
-            ByFile = allDiags.ToDictionary(kv => kv.Key, kv => kv.Value),
-        };
+        var byFile = new Dictionary<string, List<LuaDiagnostic>>();
+        for (var i = 0; i < luaFiles.Count; i++)
+            byFile[LspClient.PathToUri(luaFiles[i])] = diagnostics[i];
+
+        var collection = new DiagnosticCollection { ProjectPath = projectPath, ByFile = byFile };
         return collection.ToFormattedString();
+    }
+
+    [McpServerTool(Name = "get_supported_checks")]
+    [Description(
+        "List all available LuaHelper check types with their IDs, names, and whether they are enabled by default."
+    )]
+    public Task<string> GetSupportedChecks(CancellationToken ct)
+    {
+        return Task.FromResult(JsonSerializer.Serialize(SupportedChecks, JsonOptions));
+    }
+
+    [McpServerTool(Name = "get_luahelper_version")]
+    [Description("Get the version of the bundled lualsp.exe binary.")]
+    public Task<string> GetLuahelperVersion(CancellationToken ct)
+    {
+        return Task.FromResult(_configService.GetVersion());
     }
 
     private static string FormatDiagnostics(string filePath, List<LuaDiagnostic> diagnostics)

@@ -5,6 +5,7 @@ namespace LuaHelperMcpServer.Services;
 public interface ILspClient
 {
     LspState State { get; }
+    string? ProjectPath { get; }
     Task EnsureInitializedAsync(
         string projectPath,
         LuaHelperConfig config,

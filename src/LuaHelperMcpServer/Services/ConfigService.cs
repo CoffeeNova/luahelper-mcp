@@ -1,10 +1,14 @@
+using System.Diagnostics;
 using System.Text.Json;
 using LuaHelperMcpServer.Models;
+using Microsoft.Extensions.Logging;
 
 namespace LuaHelperMcpServer.Services;
 
 public sealed class ConfigService : IConfigService
 {
+    private const string DefaultVersion = "v0.2.29";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -12,10 +16,12 @@ public sealed class ConfigService : IConfigService
     };
 
     private readonly string _lualspPath;
+    private readonly ILogger<ConfigService> _logger;
 
-    public ConfigService(string lualspPath)
+    public ConfigService(string lualspPath, ILogger<ConfigService> logger)
     {
         _lualspPath = lualspPath ?? throw new ArgumentNullException(nameof(lualspPath));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public LuaHelperConfig GetConfig(string projectPath)
@@ -35,6 +41,29 @@ public sealed class ConfigService : IConfigService
             CheckDuplicateIf = true,
             EnableReport = true,
         };
+    }
+
+    public string GetVersion()
+    {
+        try
+        {
+            var info = FileVersionInfo.GetVersionInfo(_lualspPath);
+            var version = string.IsNullOrEmpty(info.ProductVersion)
+                ? info.FileVersion
+                : info.ProductVersion;
+            if (!string.IsNullOrEmpty(version))
+                return $"LuaHelper lualsp.exe {version}";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to read version from {LualspPath}; falling back to default version.",
+                _lualspPath
+            );
+        }
+
+        return $"LuaHelper lualsp.exe {DefaultVersion}";
     }
 
     public async Task<string> CreateDefaultConfigAsync(

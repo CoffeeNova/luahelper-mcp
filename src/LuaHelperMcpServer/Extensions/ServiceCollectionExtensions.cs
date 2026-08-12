@@ -13,7 +13,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IFileReader, FileReader>();
         services.AddSingleton<IDiagnosticCache, DiagnosticCache>();
-        services.AddSingleton<IConfigService>(_ => new ConfigService(lualspPath));
+        services.AddSingleton<IConfigService>(sp => new ConfigService(
+            lualspPath,
+            sp.GetRequiredService<ILogger<ConfigService>>()
+        ));
         services.AddSingleton<IProcessManager>(sp => new ProcessManager(
             sp.GetRequiredService<ILogger<ProcessManager>>(),
             lualspPath
