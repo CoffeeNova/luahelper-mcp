@@ -104,13 +104,13 @@ public sealed class FakeLspServer : IDisposable
 
     private void HandleDidOpen(JsonElement root)
     {
-        var uri = "";
+        var uri = string.Empty;
         if (
             root.TryGetProperty("params", out var p)
             && p.TryGetProperty("textDocument", out var td)
             && td.TryGetProperty("uri", out var u)
         )
-            uri = u.GetString() ?? "";
+            uri = u.GetString() ?? string.Empty;
 
         SendResponse(
             new

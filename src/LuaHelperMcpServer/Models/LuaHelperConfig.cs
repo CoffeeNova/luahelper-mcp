@@ -2,9 +2,9 @@ namespace LuaHelperMcpServer.Models;
 
 public sealed class LuaHelperConfig
 {
-    public string ProjectPath { get; set; } = "";
+    public string ProjectPath { get; set; } = string.Empty;
     public string Client { get; set; } = "vsc";
-    public string PluginPath { get; set; } = "";
+    public string PluginPath { get; set; } = string.Empty;
     public bool AllEnable { get; set; } = true;
     public bool CheckSyntax { get; set; } = true;
     public bool CheckNoDefine { get; set; } = false;

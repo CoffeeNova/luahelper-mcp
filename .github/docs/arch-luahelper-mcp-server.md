@@ -1090,7 +1090,7 @@ LuaHelperMcpServer.Tests/
 
 **Deliverable:** `dotnet run -- project "E:\Repository\ArenaChillPrep"` prints all diagnostics.
 
-### Phase 1: Core MCP Server
+### Phase 1: Core MCP Server ✅ COMPLETE
 
 **Goal:** MCP server with 2 tools, connectable to VS Code Copilot.
 
@@ -1102,6 +1102,8 @@ LuaHelperMcpServer.Tests/
 | Implement `check_lua_project` tool | Returns diagnostics for all `.lua` files in a directory |
 | Implement `DiagnosticCache` | Stores diagnostics by URI, supports retrieval |
 | Test with VS Code Copilot | Copilot can call `check_lua_file` and get results |
+
+**Note (found during Phase 1):** MCP stdio framing is **newline-delimited JSON-RPC** (one JSON message per line, LF or CRLF), NOT `Content-Length` framing. This differs from the LSP wire format used to talk to `lualsp.exe`. The `ModelContextProtocol` C# SDK handles framing internally — tool implementations must never write to stdout directly (only `ILogger` to stderr).
 
 **Deliverable:** VS Code `settings.json` with MCP server config → Copilot can check Lua files.
 

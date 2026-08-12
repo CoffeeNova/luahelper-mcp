@@ -62,6 +62,7 @@ luahelper-mcp/
 - **Cancellation**: All async methods accept `CancellationToken`
 - **Logging**: `ILogger<T>` via constructor injection, all output to stderr
 - **Formatting**: CSharpier (run `csharpier format src` before committing)
+- **Empty strings**: use `string.Empty`, never the `""` literal (e.g., property initializers, `?? string.Empty`, `Replace(..., string.Empty)`)
 
 ## Key gotchas
 

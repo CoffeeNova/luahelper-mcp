@@ -4,7 +4,7 @@ namespace LuaHelperMcpServer.Models;
 
 public sealed class DiagnosticCollection
 {
-    public string ProjectPath { get; init; } = "";
+    public string ProjectPath { get; init; } = string.Empty;
     public Dictionary<string, List<LuaDiagnostic>> ByFile { get; init; } = new();
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 
@@ -22,7 +22,7 @@ public sealed class DiagnosticCollection
 
         foreach (var (uri, diagnostics) in ByFile.Where(k => k.Value.Count > 0))
         {
-            var filePath = uri.Replace("file:///", "").Replace("/", "\\");
+            var filePath = uri.Replace("file:///", string.Empty).Replace("/", "\\");
             sb.AppendLine($"\n--- {filePath} ({diagnostics.Count}) ---");
             foreach (var d in diagnostics)
                 sb.AppendLine($"  L{d.StartLine}:{d.StartCharacter} [{d.Severity}] {d.Message}");

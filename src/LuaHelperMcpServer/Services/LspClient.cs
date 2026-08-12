@@ -368,7 +368,7 @@ public sealed class LspClient : ILspClient, IDisposable
         if (!msg.TryGetProperty("params", out var paramsProp))
             return;
 
-        var uri = paramsProp.GetProperty("uri").GetString() ?? "";
+        var uri = paramsProp.GetProperty("uri").GetString() ?? string.Empty;
         var diagnosticsArray = paramsProp.GetProperty("diagnostics");
         var diagnostics = new List<LuaDiagnostic>();
 
@@ -398,7 +398,7 @@ public sealed class LspClient : ILspClient, IDisposable
                 ? (DiagnosticSeverity)sev.GetInt32()
                 : DiagnosticSeverity.Warning,
             WarningType = diag.TryGetProperty("warningType", out var wt) ? wt.GetInt32() : 0,
-            Message = diag.GetProperty("message").GetString() ?? "",
+            Message = diag.GetProperty("message").GetString() ?? string.Empty,
         };
     }
 

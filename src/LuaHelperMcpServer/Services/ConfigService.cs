@@ -11,12 +11,19 @@ public sealed class ConfigService : IConfigService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    private readonly string _lualspPath;
+
+    public ConfigService(string lualspPath)
+    {
+        _lualspPath = lualspPath ?? throw new ArgumentNullException(nameof(lualspPath));
+    }
+
     public LuaHelperConfig GetConfig(string projectPath)
     {
         return new LuaHelperConfig
         {
             ProjectPath = projectPath,
-            PluginPath = "",
+            PluginPath = Path.GetDirectoryName(_lualspPath) ?? string.Empty,
             AllEnable = true,
             CheckSyntax = true,
             CheckAnnotateType = true,

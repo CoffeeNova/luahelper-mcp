@@ -80,6 +80,8 @@ The MCP SDK wraps this in the proper JSON-RPC response automatically.
 - Tool methods can accept `CancellationToken` as the last parameter — the SDK passes it automatically
 - Do NOT use `Console.WriteLine` in tool methods — it corrupts the stdio JSON-RPC stream
 - Use `ILogger<T>` for all diagnostic output (goes to stderr)
+- **MCP stdio framing is newline-delimited JSON-RPC** (one JSON message per line, LF or CRLF) — NOT `Content-Length` framing like LSP. The SDK handles framing internally; never write frames yourself.
+- To smoke-test a running server: pipe `{"jsonrpc":"2.0","id":1,"method":"initialize",...}\n` then `tools/list` as newline-delimited lines into the process and read newline-delimited responses. Do NOT hand-craft `Content-Length:` frames.
 
 ## Reference
 
