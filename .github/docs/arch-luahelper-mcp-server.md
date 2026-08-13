@@ -723,7 +723,7 @@ public sealed class ConfigTools
         [Description("Absolute path to the project root")] string projectPath,
         CancellationToken ct)
     {
-        return _configService.CreateDefaultConfigAsync(projectPath, ct);
+        return _configService.CreateDefaultConfig(projectPath, ct);
     }
 }
 ```
@@ -1167,7 +1167,7 @@ LuaHelperMcpServer.Tests/
 
 **Deliverable:** Full MCP server with all capabilities declared.
 
-### Phase 3: Configuration
+### Phase 3: Configuration ✅ COMPLETE
 
 **Goal:** Full `luahelper.json` support and customizable check flags.
 

@@ -18,9 +18,8 @@ Follow `dev-plan-luahelper-mcp-server.md` **phase by phase, step by step**.
 
 1. **Don't skip ahead** — each phase depends on the previous one. Do not start Phase 1 until Phase 0 is complete.
 2. **Check DoD** — after each step, verify the Definition of Done is met. If not, go back and finish it.
-3. **Commit after each step** — small, atomic commits.
-4. **Tests are mandatory** — unit tests for every component, integration tests for the LSP client.
-5. **Reference the architecture** — if the plan says "see architecture doc section 6.4", open `arch-luahelper-mcp-server.md` and read that section.
+3. **Tests are mandatory** — unit tests for every component, integration tests for the LSP client.
+4. **Reference the architecture** — if the plan says "see architecture doc section 6.4", open `arch-luahelper-mcp-server.md` and read that section.
 
 ### Project Structure
 

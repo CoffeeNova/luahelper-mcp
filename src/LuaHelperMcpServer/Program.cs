@@ -1,14 +1,19 @@
 ﻿using LuaHelperMcpServer.Extensions;
+using LuaHelperMcpServer.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 
-var lualspPath =
-    Environment.GetEnvironmentVariable("LUAHELPER_LUALSP_PATH")
-    ?? Path.Combine(AppContext.BaseDirectory, "lualsp", "win-x64", "lualsp.exe");
-
 var builder = Host.CreateEmptyApplicationBuilder(settings: null);
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+builder.Configuration.AddEnvironmentVariables();
+
+var envLualspPath = Environment.GetEnvironmentVariable("LUAHELPER_LUALSP_PATH");
+if (!string.IsNullOrEmpty(envLualspPath))
+    builder.Configuration["LuaHelper:LualspPath"] = envLualspPath;
 
 builder.Logging.AddConsole(options =>
 {
@@ -22,6 +27,7 @@ builder
     .WithResourcesFromAssembly()
     .WithPromptsFromAssembly();
 
-builder.Services.AddLuaHelperServices(lualspPath);
+builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("LuaHelper"));
+builder.Services.AddLuaHelperServices();
 
 await builder.Build().RunAsync();

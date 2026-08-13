@@ -21,7 +21,7 @@
 - `Program.cs` uses `Host.CreateEmptyApplicationBuilder(settings: null)` + `AddMcpServer().WithStdioServerTransport().WithToolsFromAssembly().WithResourcesFromAssembly().WithPromptsFromAssembly()`.
 - Tool classes: `[McpServerToolType]` / `[McpServerTool(Name = "...")]` / `[Description]`. All logging via `ILogger<T>` to stderr. Use `string.Empty`, never the `""` literal. Never leave a blank catch block — always log the exception.
 - **`ConfigService`** constructor is `(string lualspPath, ILogger<ConfigService> logger)`. `GetConfig(projectPath)` currently returns **hardcoded defaults** — it does NOT load `appsettings.json` or `{projectPath}/luahelper.json` yet. This is the main gap for Step 3.1.
-- `ConfigService.CreateDefaultConfigAsync(projectPath)` **already writes** the default `luahelper.json` template with WoW `IgnoreModules` (matches plan Step 3.1's template) — verify, only fill gaps.
+- `ConfigService.CreateDefaultConfig(projectPath)` **already writes** the default `luahelper.json` template with WoW `IgnoreModules` (matches plan Step 3.1's template) — verify, only fill gaps.
 - `LspClient.BuildInitializationOptions(config)` (in `LspClient.cs`) **already maps** all 22 check flags + `PluginPath` + `IgnoreFileOrDir` + `IgnoreFileOrDirError` + `RequirePathSeparator` + `client` into `initializationOptions`. Step 3.2's mapping is largely done — the gap is only that `GetConfig` feeds it hardcoded values.
 - `Models/LuaHelperOptions.cs` + `CheckDefaults` **already exist** with all 22 fields (see `Models/`). `appsettings.json` **already exists** at `src/LuaHelperMcpServer/appsettings.json` with the exact arch-doc section 9 content.
 - Gap in Step 3.3: `Program.cs` still reads `LUAHELPER_LUALSP_PATH` env var directly and does NOT call `builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("LuaHelper"))`; `ProcessManager`/`ConfigService` do not consume `IOptions<LuaHelperOptions>`.
@@ -40,7 +40,7 @@
    - If yes, parse it and **merge**: `luahelper.json` fields override defaults
    - Set `PluginPath` to the directory of `lualspPath`
    - Return merged `LuaHelperConfig`
-2. `CreateDefaultConfigAsync(projectPath)` — verify the existing template already matches plan Step 3.1; only fix gaps (e.g., write via `IFileReader`-style abstraction or keep `File.WriteAllTextAsync` if already tested).
+2. `CreateDefaultConfig(projectPath)` — verify the existing template already matches plan Step 3.1; only fix gaps (e.g., write via `IFileReader`-style abstraction or keep `File.WriteAllTextAsync` if already tested).
 
 **DoD:**
 - [ ] `luahelper.json` is loaded and merged with defaults

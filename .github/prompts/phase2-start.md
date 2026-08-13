@@ -33,7 +33,7 @@
 
 **Create** `src/LuaHelperMcpServer/Tools/ConfigTools.cs` (see arch doc section 6.6):
 3. `get_luahelper_config` — returns current config as JSON (`IConfigService.GetConfig`)
-4. `create_luahelper_json` — creates default `luahelper.json` in project root (`IConfigService.CreateDefaultConfigAsync`)
+4. `create_luahelper_json` — creates default `luahelper.json` in project root (`IConfigService.CreateDefaultConfig`)
 
 ### Step 2.2: Improve Diagnostic Wait Logic
 - **Update** `LspClient.GetDiagnosticsAsync`: the TCS-based wait with 10s timeout already exists — verify it resolves on `publishDiagnostics` and returns cached diagnostics (or empty list with warning) on timeout. Only fix gaps.

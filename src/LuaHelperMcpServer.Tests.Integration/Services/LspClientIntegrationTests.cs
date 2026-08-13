@@ -1,19 +1,19 @@
 using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace LuaHelperMcpServer.Tests.Integration.Services;
 
 public class LspClientIntegrationTests
 {
     private const string LualspExeName = "lualsp.exe";
-    private static readonly string ExtensionPath =
-        Environment.GetEnvironmentVariable("LUAHELPER_EXTENSION_PATH")
-        ?? throw new InvalidOperationException(
-            "LUAHELPER_EXTENSION_PATH environment variable is not set."
-        );
+    private static readonly string? ExtensionPath = Environment.GetEnvironmentVariable(
+        "LUAHELPER_EXTENSION_PATH"
+    );
 
-    private static string LualspPath => Path.Combine(ExtensionPath, "server", LualspExeName);
+    private static string LualspPath =>
+        Path.Combine(ExtensionPath ?? string.Empty, "server", LualspExeName);
 
     private ProcessManager _processManager = null!;
     private DiagnosticCache _cache = null!;
@@ -22,7 +22,7 @@ public class LspClientIntegrationTests
     [SetUp]
     public void SetUp()
     {
-        if (!File.Exists(LualspPath))
+        if (string.IsNullOrEmpty(ExtensionPath) || !File.Exists(LualspPath))
             Assert.Ignore(
                 $"lualsp.exe not found at {LualspPath}. Set LUAHELPER_EXTENSION_PATH environment variable."
             );
@@ -35,8 +35,8 @@ public class LspClientIntegrationTests
     [TearDown]
     public void TearDown()
     {
-        _client.Dispose();
-        _processManager.Dispose();
+        _client?.Dispose();
+        _processManager?.Dispose();
     }
 
     [Test]
@@ -48,7 +48,7 @@ public class LspClientIntegrationTests
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
-            PluginPath = ExtensionPath,
+            PluginPath = ExtensionPath!,
             AllEnable = true,
             CheckSyntax = true,
             CheckAnnotateType = true,
@@ -72,7 +72,7 @@ public class LspClientIntegrationTests
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
-            PluginPath = ExtensionPath,
+            PluginPath = ExtensionPath!,
             AllEnable = true,
             CheckSyntax = true,
         };
@@ -94,7 +94,7 @@ public class LspClientIntegrationTests
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
-            PluginPath = ExtensionPath,
+            PluginPath = ExtensionPath!,
             AllEnable = true,
             CheckSyntax = true,
             CheckAnnotateType = true,
@@ -111,5 +111,96 @@ public class LspClientIntegrationTests
         Assert.That(warningDiags[0].Message, Does.Contain("Frame").IgnoreCase);
         Assert.That(warningDiags[0].Severity, Is.EqualTo(DiagnosticSeverity.Information));
         Assert.That(cleanDiags, Is.Empty);
+    }
+
+    [Test]
+    public async Task LuahelperJson_IgnoredModules_ProduceNoDiagnostics()
+    {
+        var projectDir = CreateTempProject(ignoreModules: true);
+        try
+        {
+            var config = await GetConfigForProject(projectDir);
+            var luaFile = Path.Combine(projectDir, "Main.lua");
+
+            await _client.EnsureInitializedAsync(projectDir, config);
+            await _client.OpenFileAsync(luaFile);
+            var diagnostics = await _client.GetDiagnosticsAsync(luaFile);
+
+            Assert.That(diagnostics, Is.Empty);
+        }
+        finally
+        {
+            Directory.Delete(projectDir, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task LuahelperJson_MissingIgnoreModules_FlagsUndefinedGlobal()
+    {
+        var projectDir = CreateTempProject(ignoreModules: false);
+        try
+        {
+            var config = await GetConfigForProject(projectDir);
+            var luaFile = Path.Combine(projectDir, "Main.lua");
+
+            await _client.EnsureInitializedAsync(projectDir, config);
+            await _client.OpenFileAsync(luaFile);
+            var diagnostics = await _client.GetDiagnosticsAsync(luaFile);
+
+            Assert.That(diagnostics, Is.Not.Empty);
+            Assert.That(
+                diagnostics.Any(d => d.Message.Contains("C_Container")),
+                Is.True,
+                "Expected an undefined-variable diagnostic for C_Container"
+            );
+        }
+        finally
+        {
+            Directory.Delete(projectDir, recursive: true);
+        }
+    }
+
+    private static string CreateTempProject(bool ignoreModules)
+    {
+        var projectDir = Path.Combine(
+            Path.GetTempPath(),
+            "luahelper-it-" + Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(projectDir);
+
+        var ignoredModules = ignoreModules
+            ? """
+                ["C_Container", "C_UnitAuras", "C_Timer", "C_AddOns", "CreateFrame", "GetTime", "print", "pairs", "ipairs", "tinsert", "tremove", "table", "string", "math", "tostring", "tonumber", "type", "error", "assert", "select", "unpack", "next", "rawget", "rawset", "setmetatable", "getmetatable"]
+                """
+            : "[]";
+
+        File.WriteAllText(
+            Path.Combine(projectDir, "luahelper.json"),
+            $$"""
+            { "ShowWarnFlag": 1, "IgnoreModules": {{ignoredModules}} }
+            """
+        );
+        File.WriteAllText(
+            Path.Combine(projectDir, "Main.lua"),
+            """
+            local frame = CreateFrame("Frame")
+            frame:SetSize(100, 100)
+            local count = C_Container.GetContainerNumSlots(0)
+            local aura = C_UnitAuras.GetPlayerAuraBySpellID(1)
+            print(frame, count, aura)
+            """
+        );
+        return projectDir;
+    }
+
+    private static async Task<LuaHelperConfig> GetConfigForProject(string projectDir)
+    {
+        var options = Options.Create(new LuaHelperOptions { LualspPath = LualspPath });
+        var configService = new ConfigService(
+            options,
+            NullLogger<ConfigService>.Instance,
+            new FileReader()
+        );
+        return await configService.GetConfig(projectDir);
     }
 }

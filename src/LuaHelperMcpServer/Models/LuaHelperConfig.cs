@@ -27,6 +27,7 @@ public sealed class LuaHelperConfig
     public bool CheckDuplicateIf { get; set; } = true;
     public bool CheckSelfAssign { get; set; } = false;
     public bool CheckFloatEq { get; set; } = false;
+    public List<string> IgnoreModules { get; set; } = [];
     public List<string> IgnoreFileOrDir { get; set; } = [".vscode/", "one11.lua"];
     public List<string> IgnoreFileOrDirError { get; set; } = [".vscode/", "one11.lua"];
     public string RequirePathSeparator { get; set; } = ".";

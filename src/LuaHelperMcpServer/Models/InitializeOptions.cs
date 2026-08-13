@@ -26,6 +26,7 @@ public sealed class InitializeOptions
     public bool CheckDuplicateIf { get; set; } = true;
     public bool CheckSelfAssign { get; set; } = false;
     public bool CheckFloatEq { get; set; } = false;
+    public List<string> IgnoreModules { get; set; } = [];
     public List<string> IgnoreFileOrDir { get; set; } = [];
     public List<string> IgnoreFileOrDirError { get; set; } = [];
     public string RequirePathSeparator { get; set; } = ".";

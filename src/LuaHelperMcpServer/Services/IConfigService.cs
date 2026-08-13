@@ -4,7 +4,7 @@ namespace LuaHelperMcpServer.Services;
 
 public interface IConfigService
 {
-    LuaHelperConfig GetConfig(string projectPath);
+    Task<LuaHelperConfig> GetConfig(string projectPath, CancellationToken ct = default);
     string GetVersion();
-    Task<string> CreateDefaultConfigAsync(string projectPath, CancellationToken ct = default);
+    Task<string> CreateDefaultConfig(string projectPath, CancellationToken ct = default);
 }

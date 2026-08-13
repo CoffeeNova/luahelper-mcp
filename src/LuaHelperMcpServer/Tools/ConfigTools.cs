@@ -25,16 +25,16 @@ public sealed class ConfigTools
     [Description(
         "Get the current LuaHelper configuration for a project, including check flags and ignored files."
     )]
-    public Task<string> GetLuahelperConfig(
+    public async Task<string> GetLuahelperConfig(
         [Description("Absolute path to the project root")] string projectPath,
         CancellationToken ct
     )
     {
         if (!Directory.Exists(projectPath))
-            return Task.FromResult($"Error: Directory not found: {projectPath}");
+            return $"Error: Directory not found: {projectPath}";
 
-        var config = _configService.GetConfig(projectPath);
-        return Task.FromResult(JsonSerializer.Serialize(config, JsonOptions));
+        var config = await _configService.GetConfig(projectPath, ct);
+        return JsonSerializer.Serialize(config, JsonOptions);
     }
 
     [McpServerTool(Name = "create_luahelper_json")]
@@ -47,6 +47,6 @@ public sealed class ConfigTools
         if (!Directory.Exists(projectPath))
             return $"Error: Directory not found: {projectPath}";
 
-        return await _configService.CreateDefaultConfigAsync(projectPath, ct);
+        return await _configService.CreateDefaultConfig(projectPath, ct);
     }
 }

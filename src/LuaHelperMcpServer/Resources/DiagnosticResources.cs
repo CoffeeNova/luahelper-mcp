@@ -48,7 +48,7 @@ public sealed class DiagnosticResources
         if (cached != null)
             return JsonSerializer.Serialize(cached, JsonOptions);
 
-        var config = _configService.GetConfig(Path.GetDirectoryName(filePath)!);
+        var config = await _configService.GetConfig(Path.GetDirectoryName(filePath)!, ct);
         await _lspClient.EnsureInitializedAsync(config.ProjectPath, config, ct);
         await _lspClient.OpenFileAsync(filePath, ct);
         var diagnostics = await _lspClient.GetDiagnosticsAsync(filePath, ct);
@@ -63,11 +63,11 @@ public sealed class DiagnosticResources
         MimeType = "application/json"
     )]
     [Description("Returns the current LuaHelper configuration for the active project as JSON.")]
-    public Task<string> GetConfig(CancellationToken ct)
+    public async Task<string> GetConfig(CancellationToken ct)
     {
         var config = string.IsNullOrEmpty(_lspClient.ProjectPath)
             ? new LuaHelperConfig()
-            : _configService.GetConfig(_lspClient.ProjectPath!);
-        return Task.FromResult(JsonSerializer.Serialize(config, JsonOptions));
+            : await _configService.GetConfig(_lspClient.ProjectPath!, ct);
+        return JsonSerializer.Serialize(config, JsonOptions);
     }
 }

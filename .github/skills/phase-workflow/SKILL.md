@@ -10,8 +10,7 @@ Use at the start of every phase or feature implementation.
 4. **Implement step by step** — one step at a time, verify after each
 5. **Run tests** — `dotnet test src/LuaHelperMcpServer.Tests.Unit` after each step
 6. **Check DoD** — verify Definition of Done before moving to next phase
-7. **Commit** — small, atomic commits after each step
-8. **Hand back** — write a brief report: what was done, tests passed, DoD met/not met
+7. **Hand back** — write a brief report: what was done, tests passed, DoD met/not met
 
 ## Phase structure
 
@@ -27,7 +26,6 @@ Each phase in `dev-plan-luahelper-mcp-server.md` has:
 - Check DoD before moving on
 - Run tests after each step
 - Reference architecture doc for class designs, sequence diagrams, and state machine
-- Commit after each step — small, atomic commits
 
 ## Report format
 

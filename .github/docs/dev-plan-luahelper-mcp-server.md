@@ -13,7 +13,6 @@
 - **Check DoD before moving on** — Definition of Done is mandatory
 - **Run tests after each step** — don't accumulate bugs
 - **Reference architecture doc** for class designs, sequence diagrams, and state machine
-- **Commit after each step** — small, atomic commits
 
 ### Prerequisites
 
@@ -716,7 +715,7 @@ Implement MCP resources using the C# SDK resource handlers:
 
 ---
 
-## Phase 3: Configuration
+## Phase 3: Configuration ✅ COMPLETE
 
 **Goal:** Full `luahelper.json` support.
 
@@ -737,7 +736,7 @@ Implement MCP resources using the C# SDK resource handlers:
    - Set `PluginPath` to the `lualsp/` directory
    - Return merged `LuaHelperConfig`
 
-2. `CreateDefaultConfigAsync(projectPath)`:
+2. `CreateDefaultConfig(projectPath)`:
    - Write a default `luahelper.json` to the project root
    - Include WoW API globals in `IgnoreModules` as a starting point
 
@@ -763,9 +762,9 @@ Implement MCP resources using the C# SDK resource handlers:
 ```
 
 **DoD:**
-- [ ] `luahelper.json` is loaded and merged with defaults
-- [ ] `IgnoreModules` are passed to lualsp.exe as part of `initializationOptions`
-- [ ] `create_luahelper_json` tool creates a valid config file
+- [x] `luahelper.json` is loaded and merged with defaults
+- [x] `IgnoreModules` are passed to lualsp.exe as part of `initializationOptions`
+- [x] `create_luahelper_json` tool creates a valid config file
 
 ---
 
@@ -784,8 +783,8 @@ The `luahelper.json` fields need to be mapped to the LSP `initializationOptions`
 | `ShowWarnFlag` | `AllEnable` (bool: 1→true, 0→false) |
 
 **DoD:**
-- [ ] All `luahelper.json` fields are correctly mapped
-- [ ] Integration test: WoW addon with `luahelper.json` produces no false positives for ignored modules
+- [x] All `luahelper.json` fields are correctly mapped
+- [x] Integration test: WoW addon with `luahelper.json` produces no false positives for ignored modules
 
 ---
 
@@ -825,10 +824,10 @@ builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("L
 ```
 
 **DoD:**
-- [ ] `appsettings.json` created with all options
-- [ ] `LuaHelperOptions` binds from configuration
-- [ ] `ProcessManager` uses `LualspPath` from options
-- [ ] **Phase 3 complete** ✅
+- [x] `appsettings.json` created with all options
+- [x] `LuaHelperOptions` binds from configuration
+- [x] `ProcessManager` uses `LualspPath` from options
+- [x] **Phase 3 complete** ✅
 
 ---
 

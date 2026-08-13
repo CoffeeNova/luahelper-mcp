@@ -16,9 +16,8 @@ Refactor the Phase 0 code of the LuaHelper MCP Server to fix all issues identifi
 1. **Read the audit first** — `audit-phase0.md` contains every issue with file, line, and severity.
 2. **Fix Critical issues first**, then High, then Medium.
 3. **Do not change observable behavior** — this is refactoring, not feature work.
-4. **Commit after each logical group of changes** — small, atomic commits.
-5. **Tests must pass after every commit**.
-6. **Format with CSharpier** after all code changes are done.
+4. **Tests must pass after every commit**.
+5. **Format with CSharpier** after all code changes are done.
 
 ---
 

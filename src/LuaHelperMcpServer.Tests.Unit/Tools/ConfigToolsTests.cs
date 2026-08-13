@@ -32,7 +32,9 @@ public class ConfigToolsTests
     public async Task GetLuahelperConfig_ValidDirectory_ReturnsConfigJson()
     {
         var config = new LuaHelperConfig { ProjectPath = AppContext.BaseDirectory };
-        _configServiceMock.Setup(c => c.GetConfig(AppContext.BaseDirectory)).Returns(config);
+        _configServiceMock
+            .Setup(c => c.GetConfig(AppContext.BaseDirectory, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(config);
 
         var result = await _tools.GetLuahelperConfig(
             AppContext.BaseDirectory,
@@ -55,7 +57,7 @@ public class ConfigToolsTests
 
         Assert.That(result, Does.Contain("Error: Directory not found"));
         _configServiceMock.Verify(
-            c => c.CreateDefaultConfigAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            c => c.CreateDefaultConfig(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
     }

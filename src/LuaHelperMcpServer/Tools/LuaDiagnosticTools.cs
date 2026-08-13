@@ -173,7 +173,7 @@ public sealed class LuaDiagnosticTools
         if (!File.Exists(filePath))
             return $"Error: File not found: {filePath}";
 
-        var config = _configService.GetConfig(Path.GetDirectoryName(filePath)!);
+        var config = await _configService.GetConfig(Path.GetDirectoryName(filePath)!, ct);
         await _lspClient.EnsureInitializedAsync(config.ProjectPath, config, ct);
         await _lspClient.OpenFileAsync(filePath, ct);
         var diagnostics = await _lspClient.GetDiagnosticsAsync(filePath, ct);
@@ -193,7 +193,7 @@ public sealed class LuaDiagnosticTools
         if (!Directory.Exists(projectPath))
             return $"Error: Directory not found: {projectPath}";
 
-        var config = _configService.GetConfig(projectPath);
+        var config = await _configService.GetConfig(projectPath, ct);
         await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
 
         var luaFiles = Directory

@@ -59,9 +59,10 @@ luahelper-mcp/
 - **Implementations**: Concrete class named after interface without `I` (e.g., `LspClient`, `ProcessManager`)
 - **Constructor injection**: All dependencies via constructor, with `ArgumentNullException.ThrowIfNull`
 - **Async**: All I/O is async (`async Task`), no blocking calls
+- **Method naming**: Do NOT use the `Async` suffix unless a sync version with the same name exists in the class (e.g., `GetConfig`, `CreateDefaultConfig`, not `GetConfigAsync`)
 - **Cancellation**: All async methods accept `CancellationToken`
 - **Logging**: `ILogger<T>` via constructor injection, all output to stderr
-- **Formatting**: CSharpier (run `csharpier format src` before committing)
+- **Formatting**: CSharpier (run `csharpier format src`)
 - **Empty strings**: use `string.Empty`, never the `""` literal (e.g., property initializers, `?? string.Empty`, `Replace(..., string.Empty)`)
 
 ## Key gotchas

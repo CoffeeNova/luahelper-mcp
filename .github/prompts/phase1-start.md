@@ -84,5 +84,4 @@ Configure VS Code MCP in `%APPDATA%\Code\User\settings.json`:
 4. Run `dotnet test src/LuaHelperMcpServer.Tests.Unit` after each step
 5. Run `dotnet test src/LuaHelperMcpServer.Tests.Integration` before completion
 6. Format with `csharpier format src`
-7. Commit after each step
-8. Write a brief report
+7. Write a brief report

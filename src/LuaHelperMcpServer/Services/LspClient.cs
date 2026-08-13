@@ -151,6 +151,7 @@ public sealed class LspClient : ILspClient, IDisposable
             ["CheckDuplicateIf"] = config.CheckDuplicateIf,
             ["CheckSelfAssign"] = config.CheckSelfAssign,
             ["CheckFloatEq"] = config.CheckFloatEq,
+            ["IgnoreModules"] = config.IgnoreModules,
             ["IgnoreFileOrDir"] = config.IgnoreFileOrDir,
             ["IgnoreFileOrDirError"] = config.IgnoreFileOrDirError,
             ["RequirePathSeparator"] = config.RequirePathSeparator,

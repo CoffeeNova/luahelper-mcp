@@ -24,7 +24,6 @@ Main agent for implementing phases, features, and bugfixes in the LuaHelper MCP 
 - Run unit tests after every change: `dotnet test src/LuaHelperMcpServer.Tests.Unit`
 - Run integration tests before phase completion: `dotnet test src/LuaHelperMcpServer.Tests.Integration`
 - Format with CSharpier before committing: `csharpier format src`
-- Commit after each logical step — small, atomic commits.
 
 ## Output format
 
