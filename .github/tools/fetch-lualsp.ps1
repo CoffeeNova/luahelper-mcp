@@ -48,6 +48,9 @@ elseif (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
     $OutputDir = Join-Path $repoRoot $OutputDir
 }
 
+# User profile root: USERPROFILE (Windows) vs HOME (Linux/macOS).
+$userProfile = if ($env:USERPROFILE) { $env:USERPROFILE } elseif ($env:HOME) { $env:HOME } else { $repoRoot }
+
 $exeName = if ($Rid -like "win*") { "lualsp.exe" } else { "lualsp" }
 # Candidate file names for this Rid inside the LuaHelper extension. The
 # extension names its binaries per platform (lualsp.exe, linuxlualsp,
@@ -125,9 +128,9 @@ function Get-LuaHelperExtensionInfo {
 function Find-DetectedExtensions {
     $found = [System.Collections.Generic.List[object]]::new()
     $roots = @(
-        (Join-Path $env:USERPROFILE ".vscode\extensions"),
-        (Join-Path $env:USERPROFILE ".vscode-insiders\extensions"),
-        (Join-Path $env:USERPROFILE ".cursor\extensions")
+        (Join-Path $userProfile ".vscode/extensions"),
+        (Join-Path $userProfile ".vscode-insiders/extensions"),
+        (Join-Path $userProfile ".cursor/extensions")
     )
     foreach ($root in $roots) {
         if (Test-Path -LiteralPath $root) {
@@ -136,7 +139,7 @@ function Find-DetectedExtensions {
         }
     }
     # Any other yinfei.luahelper-* folder under the user profile
-    Get-ChildItem -LiteralPath $env:USERPROFILE -Directory -Filter "yinfei.luahelper-*" `
+    Get-ChildItem -LiteralPath $userProfile -Directory -Filter "yinfei.luahelper-*" `
         -Recurse -Depth 6 -ErrorAction SilentlyContinue |
         ForEach-Object {
             if (-not $found.Contains($_.FullName)) { $found.Add($_.FullName) }
@@ -311,7 +314,7 @@ if ($action -eq "none") {
 }
 
 # --- 5. Obtain the lualsp binary ---
-$workDir = Join-Path $env:TEMP "luahelper-fetch-$Rid"
+$workDir = Join-Path ([System.IO.Path]::GetTempPath()) "luahelper-fetch-$Rid"
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
 $sourceDesc = ""
 $chosenVersion = $null

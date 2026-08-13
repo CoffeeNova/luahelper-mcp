@@ -1230,6 +1230,8 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 
 **Deviation (first real run, Aug 2026):** first push to `main` failed the `version` job with `Process completed with exit code 1` even though the script completed and set all outputs. Cause: GitHub's pwsh steps run with `$PSNativeCommandUseErrorActionPreference = $true`, so the *expected* failure of `git describe --tags --abbrev=0` (exit 128 — no tags exist yet) poisoned the step, and `gh release view` would have done the same on a new tag push (release doesn't exist yet). Fix: both probes replaced with always-successful commands — `git tag --list 'v*'` + version sort for the latest tag, and `gh release list --json tagName` + `-contains` for the exists-check. `throw` remains the only intentional failure (invalid tag).
 
+**Deviation (same run, second issue):** the `linux-x64`/`osx-x64` build jobs failed at provisioning with `Cannot bind argument to parameter 'Path' because it is null` — `fetch-lualsp.ps1` used `$env:USERPROFILE`, which does not exist on Linux/macOS (they use `$HOME`). Fix: cross-platform `$userProfile` resolution (`USERPROFILE` → `HOME` → repo root) and `[System.IO.Path]::GetTempPath()` for the work dir.
+
 ---
 
 ## Quick Reference: All MCP Tools
