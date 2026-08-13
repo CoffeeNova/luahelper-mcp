@@ -752,7 +752,7 @@ Implement MCP resources using the C# SDK resource handlers:
   "IgnoreFileVars": [],
   "IgnoreReadFiles": [],
   "IgnoreErrorTypes": [],
-  "IgnoreFileOrFloder": [".vscode/", "Tests/"],
+  "IgnoreFileOrFloder": [".vscode/", ".git/", ".svn/", ".hg/", ".idea/", ".gitignore", "Tests/", "build/", "dist/", "out/", "bin/", "target/", ".cache/", "generated/", "vendor/", "lib/", "3rd/", "Dependencies/", "Lua/", "node_modules/"],
   "IgnoreFileErr": [],
   "IgnoreFileErrTypes": [],
   "ProtocolVars": [],
@@ -837,7 +837,7 @@ builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("L
 
 **Estimated time:** 4–6 hours
 
-**Result:** `.github/tools/fetch-lualsp.ps1` detects/dowloads/updates/bundles lualsp (proven on a machine with **no** LuaHelper extension — downloaded v0.2.29 from the Marketplace VSIX), `lualsp/win-x64/lualsp.exe` + `lualsp/version.json` bundle formed and verified (LSP `initialize` smoke test + 10 integration tests passing), `vscode-extension/` wraps the server with `contributes.mcpServers`, `.github/tools/build-vsix.ps1` produces `luahelper-mcp-0.1.0.vsix` (42 MB, contains exe + lualsp), extension installs via `code --install-extension`, and the installed server answers a full MCP handshake returning real diagnostics for `check_lua_file`.
+**Result:** `.github/tools/fetch-lualsp.ps1` detects/dowloads/updates/bundles lualsp (proven on a machine with **no** LuaHelper extension — downloaded v0.2.29 from the Marketplace VSIX), `lualsp/win-x64/lualsp.exe` + `lualsp/version.json` bundle formed and verified (LSP `initialize` smoke test + 10 integration tests passing), `vscode-extension/` wraps the server with `contributes.mcpServerDefinitionProviders` + `registerMcpServerDefinitionProvider` (bugfix Aug 2026: the earlier `contributes.mcpServers` key is not a VS Code contribution point and was silently ignored), `.github/tools/build-vsix.ps1` produces `luahelper-mcp-0.1.0.vsix` (42 MB, contains exe + lualsp), extension installs via `code --install-extension`, and the installed server answers a full MCP handshake returning real diagnostics for `check_lua_file`.
 
 > **Why this changed:** Phase 4 previously assumed `lualsp.exe` was copied from a locally installed `yinfei.luahelper` extension (`C:\Users\dnmno\.vscode\extensions\...`). That assumption breaks on any machine without the extension. `fetch-lualsp.ps1` removes the dependency: it scans the machine for every installed lualsp version (VS Code/Cursor extensions, existing bundle), downloads the latest when none exists, and proposes an update when a newer version is found.
 
@@ -964,11 +964,10 @@ dotnet run --project src\LuaHelperMcpServer -- "E:\Repository\ArenaChillPrep"
   "categories": ["Linters", "Programming Languages"],
   "main": "./out/extension.js",
   "contributes": {
-    "mcpServers": [
+    "mcpServerDefinitionProviders": [
       {
-        "name": "luahelper",
-        "command": "${extensionPath}/luahelper-mcp-server.exe",
-        "args": []
+        "id": "luahelper",
+        "label": "LuaHelper MCP Server"
       }
     ]
   },
@@ -986,9 +985,11 @@ dotnet run --project src\LuaHelperMcpServer -- "E:\Repository\ArenaChillPrep"
 
 **DoD:**
 - [x] `package.json` is valid
-- [x] `contributes.mcpServers` declares the server
+- [x] `contributes.mcpServerDefinitionProviders` declares the provider
 
-> **Deviations from the sample:** `engines.vscode` is `^1.99.0` (the `contributes.mcpServers` contribution point requires VS Code >= 1.99, not 1.90) and `"activationEvents": []` was added (vsce rejects a manifest with `main` but no `activationEvents`). The command points at the real publish artifact name: `${extensionPath}/LuaHelperMcpServer.exe`.
+> **Deviations from the sample:** `engines.vscode` is `^1.101.0` (the `mcpServerDefinitionProviders` extension point + `vscode.lm.registerMcpServerDefinitionProvider` API require VS Code >= 1.101) and `"activationEvents": []` was added (vsce rejects a manifest with `main` but no `activationEvents`). The provider id `luahelper` matches the id passed to `registerMcpServerDefinitionProvider` in `extension.ts`.
+
+> **Bugfix (Aug 2026):** The original manifest used `contributes.mcpServers`, which is **not** a VS Code contribution point — VS Code silently ignored it and the MCP server never appeared. Fixed by switching to `contributes.mcpServerDefinitionProviders` + the `registerMcpServerDefinitionProvider` API (stable since VS Code 1.101, confirmed against the official [MCP developer guide](https://code.visualstudio.com/api/extension-guides/ai/mcp)).
 
 ---
 
@@ -997,14 +998,27 @@ dotnet run --project src\LuaHelperMcpServer -- "E:\Repository\ArenaChillPrep"
 **Create file:** `vscode-extension/extension.ts`
 
 Minimal extension that:
-1. Activates on MCP server start (no special activation logic needed — VS Code handles it)
+1. Registers the `luahelper` MCP server definition via `vscode.lm.registerMcpServerDefinitionProvider` on activation
 2. Logs activation to output channel for debugging
 
 ```typescript
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('LuaHelper MCP Server extension activated');
+
+    const serverExe = path.join(context.extensionPath, 'LuaHelperMcpServer.exe');
+
+    context.subscriptions.push(vscode.lm.registerMcpServerDefinitionProvider('luahelper', {
+        provideMcpServerDefinitions: async () => [
+            new vscode.McpStdioServerDefinition({
+                label: 'luahelper',
+                command: serverExe,
+                args: [],
+            }),
+        ],
+    }));
 }
 
 export function deactivate() {

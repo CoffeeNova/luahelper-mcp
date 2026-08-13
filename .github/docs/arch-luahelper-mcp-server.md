@@ -953,7 +953,7 @@ Placed at the project root. Overrides defaults:
   "IgnoreFileVars": [],
   "IgnoreReadFiles": [],
   "IgnoreErrorTypes": [],
-  "IgnoreFileOrFloder": [".vscode/", "Tests/"],
+  "IgnoreFileOrFloder": [".vscode/", ".git/", "build/", "vendor/", "node_modules/", "lib/", "3rd/", "Tests/"],
   "IgnoreFileErr": [],
   "IgnoreFileErrTypes": [],
   "ProtocolVars": [],
@@ -1193,7 +1193,7 @@ LuaHelperMcpServer.Tests/
 | Create `.github/tools/fetch-lualsp.ps1` provisioning script | Detects installed lualsp versions, downloads when missing, offers updates, forms the bundle |
 | Form `lualsp/{rid}/` bundle + `version.json` manifest | Bundle is reproducible by the script; `ProcessManager` can launch it |
 | Create `vscode-extension/` folder with `package.json` | Extension manifest valid |
-| Add `contributes.mcpServers` declaration | VS Code auto-starts the MCP server |
+| Add `contributes.mcpServerDefinitionProviders` declaration + `registerMcpServerDefinitionProvider` | VS Code discovers the MCP server definition and auto-starts it (the original `contributes.mcpServers` key is **not** a VS Code contribution point and was silently ignored — fixed Aug 2026) |
 | Bundle compiled MCP server binary | Binary included in `.vsix` |
 | Bundle `lualsp.exe` (platform-specific) | Win/Linux/macOS binaries included |
 | Write README.md with install instructions | User can install and use in < 1 minute |

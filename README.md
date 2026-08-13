@@ -66,17 +66,34 @@ Tell your MCP client where the server binary is.
 }
 ```
 
+**opencode** (`opencode.json` in your project root, or
+`~/.config/opencode/opencode.json` for all projects):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "luahelper": {
+      "type": "local",
+      "command": ["C:\\path\\to\\LuaHelperMcpServer.exe"],
+      "enabled": true
+    }
+  }
+}
+```
+
 The server locates `lualsp` next to its own binary automatically. If your
 `lualsp` lives elsewhere, set the `LUAHELPER_LUALSP_PATH` environment variable
 to its absolute path.
 
 ### 3. Use
 
-Restart your client, then ask the assistant to check Lua files:
+Restart your client, then ask the assistant to check Lua files. For example,
+against the sample file in this repository at `examples/main.lua`:
 
-> Check `src/main.lua` for Lua warnings.
+> Check `examples/main.lua` for Lua warnings.
 >
-> Run diagnostics on the whole project at `E:\Games\MyAddon`.
+> Run diagnostics on the whole project at `C:\dev\my-lua-project`.
 
 The assistant calls the `check_lua_file` / `check_lua_project` tools and
 reports the diagnostics with line numbers.
@@ -109,13 +126,14 @@ Place in your Lua project root to override server defaults. Fields map to
 | Field | Maps to | Description |
 |---|---|---|
 | `ShowWarnFlag` | `AllEnable` | `1`/`0` master switch for all checks |
-| `IgnoreModules` | `IgnoreModules` | Globals to ignore (e.g. WoW API: `C_Container`, `CreateFrame`, ...) |
-| `IgnoreFileOrFloder` | `IgnoreFileOrDir` | Files/folders to skip (`".vscode/"`, `"Tests/"`) |
+| `IgnoreModules` | `IgnoreModules` | Globals to ignore (e.g. globals your runtime injects, such as `game`, `player`, `logger`) |
+| `IgnoreFileOrFloder` | `IgnoreFileOrDir` | Files/folders to skip (defaults: `.vscode/`, `.git/`, `build/`, `vendor/`, `node_modules/`, and more) |
 | `IgnoreFileErr` | `IgnoreFileOrDirError` | Files/folders to skip in error reporting |
 | `PathSeparator` | `RequirePathSeparator` | Separator for `require` paths (default `"."`) |
 
 Use the `create_luahelper_json` tool to generate a starter file with the
-recommended WoW globals.
+recommended defaults, then customize `IgnoreModules` for your project's
+runtime globals.
 
 ## Available MCP tools
 

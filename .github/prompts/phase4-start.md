@@ -21,8 +21,8 @@
    - Parameters: `-Rid` (win-x64), `-OutputDir` (lualsp), `-Update`, `-Force`, `-SkipDownload`
    - Idempotent: up-to-date bundle → status + exit 0, no changes
 2. **Step 4.2** — Run `.\ .github\tools\fetch-lualsp.ps1`, verify bundle launches (`dotnet run --project src\LuaHelperMcpServer -- "E:\Repository\ArenaChillPrep"` produces diagnostics)
-3. **Step 4.3** — Create `vscode-extension/package.json` with `contributes.mcpServers` declaration
-4. **Step 4.4** — Create `vscode-extension/extension.ts` + `tsconfig.json` (minimal activation logging)
+3. **Step 4.3** — Create `vscode-extension/package.json` with `contributes.mcpServerDefinitionProviders` declaration (id `luahelper`; note: there is NO `contributes.mcpServers` contribution point in VS Code — that key is silently ignored)
+4. **Step 4.4** — Create `vscode-extension/extension.ts` + `tsconfig.json` — register the MCP server via `vscode.lm.registerMcpServerDefinitionProvider('luahelper', ...)` returning an `McpStdioServerDefinition` pointing at `${extensionPath}/LuaHelperMcpServer.exe`
 5. **Step 4.5** — Create `vscode-extension/.vscodeignore` and build script `.github/tools/build-vsix.ps1` (calls `fetch-lualsp.ps1 -Rid win-x64 -Update` first, then `dotnet publish` AOT, copy lualsp, `vsce package`)
 6. **Step 4.6** — Test: install `.vsix` via `code --install-extension`, verify Copilot can call `check_lua_file`
 
@@ -35,7 +35,7 @@
 - [ ] Script is idempotent — second run with an up-to-date bundle changes nothing
 - [ ] `lualsp/win-x64/lualsp.exe` exists and launches (produces diagnostics)
 - [ ] `lualsp/version.json` matches the actual binary version
-- [ ] `vscode-extension/package.json` is valid; `contributes.mcpServers` declares the server
+- [ ] `vscode-extension/package.json` is valid; `contributes.mcpServerDefinitionProviders` declares the provider
 - [ ] Extension compiles with `npm run compile`; no runtime errors on activation
 - [ ] `build-vsix.ps1` produces a `.vsix` containing the .NET binary + lualsp.exe; succeeds on a machine with no LuaHelper extension installed
 - [ ] Extension installs without errors; Copilot can use `check_lua_file` after install

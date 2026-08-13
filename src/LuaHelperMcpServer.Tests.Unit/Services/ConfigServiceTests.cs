@@ -62,7 +62,7 @@ public class ConfigServiceTests
         config.CheckSyntax.ShouldBeTrue();
         config.CheckAnnotateType.ShouldBeTrue();
         config.IgnoreModules.ShouldBeEmpty();
-        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "one11.lua" });
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/" });
         config.RequirePathSeparator.ShouldBe(".");
         await fileReader
             .DidNotReceive()
@@ -115,7 +115,7 @@ public class ConfigServiceTests
         // Assert
         config.AllEnable.ShouldBeTrue();
         config.IgnoreModules.ShouldBeEmpty();
-        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "one11.lua" });
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/" });
         config.RequirePathSeparator.ShouldBe(".");
     }
 
@@ -145,6 +145,74 @@ public class ConfigServiceTests
         config.IgnoreModules.ShouldBe(new[] { "C_Timer" });
         config.IgnoreFileOrDir.ShouldBe(new[] { "generated/" });
         config.IgnoreFileOrDirError.ShouldBe(new[] { "generated.lua" });
+        config.RequirePathSeparator.ShouldBe("/");
+    }
+
+    [Test]
+    public async Task GetConfig_NewFormatPropertyNames_AreMerged()
+    {
+        // Arrange — modern camelCase format used by users (e.g., ArenaChillPrep)
+        const string json = """
+            {
+              "allEnable": false,
+              "checkNoDefine": true,
+              "checkLocalNoUse": true,
+              "checkAnnotateType": false,
+              "checkFloatEq": true,
+              "ignoreFileOrDir": [".vscode/", "Tests/", "build/"],
+              "ignoreFileOrDirError": ["generated.lua"],
+              "requirePathSeparator": "/",
+              "enableReport": false
+            }
+            """;
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(json);
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert
+        config.AllEnable.ShouldBeFalse();
+        config.CheckNoDefine.ShouldBeTrue();
+        config.CheckLocalNoUse.ShouldBeTrue();
+        config.CheckAnnotateType.ShouldBeFalse();
+        config.CheckFloatEq.ShouldBeTrue();
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "Tests/", "build/" });
+        config.IgnoreFileOrDirError.ShouldBe(new[] { "generated.lua" });
+        config.RequirePathSeparator.ShouldBe("/");
+        config.EnableReport.ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task GetConfig_NewFormatNamesOverrideOldFormat()
+    {
+        // Arrange — both old and new names present; new should win
+        const string json = """
+            {
+              "ShowWarnFlag": 0,
+              "AllEnable": true,
+              "IgnoreFileOrFloder": ["old_dir/"],
+              "IgnoreFileOrDir": ["new_dir/"],
+              "IgnoreFileErr": ["old.lua"],
+              "IgnoreFileOrDirError": ["new.lua"],
+              "PathSeparator": "\\",
+              "RequirePathSeparator": "/"
+            }
+            """;
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(json);
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert — new names win
+        config.AllEnable.ShouldBeTrue();
+        config.IgnoreFileOrDir.ShouldBe(new[] { "new_dir/" });
+        config.IgnoreFileOrDirError.ShouldBe(new[] { "new.lua" });
         config.RequirePathSeparator.ShouldBe("/");
     }
 

@@ -126,24 +126,122 @@ public sealed class ConfigService : IConfigService
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        if (TryGetProperty(root, "ShowWarnFlag", out var showWarnFlag))
+        if (TryGetBoolProperty(root, "AllEnable", out var allEnable))
+            config.AllEnable = allEnable;
+        else if (TryGetProperty(root, "ShowWarnFlag", out var showWarnFlag))
             config.AllEnable = showWarnFlag.GetInt32() == 1;
+
+        TryMergeCheckFlags(config, root);
 
         if (TryGetStringArray(root, "IgnoreModules", out var ignoreModules))
             config.IgnoreModules = ignoreModules;
 
-        if (TryGetStringArray(root, "IgnoreFileOrFloder", out var ignoreFileOrFloder))
-            config.IgnoreFileOrDir = ignoreFileOrFloder;
-
-        if (TryGetStringArray(root, "IgnoreFileErr", out var ignoreFileErr))
-            config.IgnoreFileOrDirError = ignoreFileErr;
+        if (
+            !TryGetStringArray(root, "IgnoreFileOrDir", out var ignoreFileOrDir)
+            && !TryGetStringArray(root, "IgnoreFileOrFloder", out ignoreFileOrDir)
+        )
+            ignoreFileOrDir = null;
+        if (ignoreFileOrDir != null)
+            config.IgnoreFileOrDir = ignoreFileOrDir;
 
         if (
-            TryGetProperty(root, "PathSeparator", out var pathSeparator)
-            && pathSeparator.ValueKind == JsonValueKind.String
-            && !string.IsNullOrEmpty(pathSeparator.GetString())
+            !TryGetStringArray(root, "IgnoreFileOrDirError", out var ignoreFileOrDirError)
+            && !TryGetStringArray(root, "IgnoreFileErr", out ignoreFileOrDirError)
         )
-            config.RequirePathSeparator = pathSeparator.GetString()!;
+            ignoreFileOrDirError = null;
+        if (ignoreFileOrDirError != null)
+            config.IgnoreFileOrDirError = ignoreFileOrDirError;
+
+        if (!TryGetStringProperty(root, "RequirePathSeparator", out var requirePathSeparator))
+            TryGetStringProperty(root, "PathSeparator", out requirePathSeparator);
+        if (requirePathSeparator != null)
+            config.RequirePathSeparator = requirePathSeparator;
+
+        if (TryGetBoolProperty(root, "EnableReport", out var enableReport))
+            config.EnableReport = enableReport;
+    }
+
+    private static void TryMergeCheckFlags(LuaHelperConfig config, JsonElement root)
+    {
+        if (TryGetBoolProperty(root, "CheckSyntax", out var v))
+            config.CheckSyntax = v;
+        if (TryGetBoolProperty(root, "CheckNoDefine", out v))
+            config.CheckNoDefine = v;
+        if (TryGetBoolProperty(root, "CheckAfterDefine", out v))
+            config.CheckAfterDefine = v;
+        if (TryGetBoolProperty(root, "CheckLocalNoUse", out v))
+            config.CheckLocalNoUse = v;
+        if (TryGetBoolProperty(root, "CheckTableDuplicateKey", out v))
+            config.CheckTableDuplicateKey = v;
+        if (TryGetBoolProperty(root, "CheckReferNoFile", out v))
+            config.CheckReferNoFile = v;
+        if (TryGetBoolProperty(root, "CheckAssignParamNum", out v))
+            config.CheckAssignParamNum = v;
+        if (TryGetBoolProperty(root, "CheckLocalDefineParamNum", out v))
+            config.CheckLocalDefineParamNum = v;
+        if (TryGetBoolProperty(root, "CheckGotoLable", out v))
+            config.CheckGotoLable = v;
+        if (TryGetBoolProperty(root, "CheckFuncParam", out v))
+            config.CheckFuncParam = v;
+        if (TryGetBoolProperty(root, "CheckImportModuleVar", out v))
+            config.CheckImportModuleVar = v;
+        if (TryGetBoolProperty(root, "CheckIfNotVar", out v))
+            config.CheckIfNotVar = v;
+        if (TryGetBoolProperty(root, "CheckFunctionDuplicateParam", out v))
+            config.CheckFunctionDuplicateParam = v;
+        if (TryGetBoolProperty(root, "CheckBinaryExpressionDuplicate", out v))
+            config.CheckBinaryExpressionDuplicate = v;
+        if (TryGetBoolProperty(root, "CheckErrorOrAlwaysTrue", out v))
+            config.CheckErrorOrAlwaysTrue = v;
+        if (TryGetBoolProperty(root, "CheckErrorAndAlwaysFalse", out v))
+            config.CheckErrorAndAlwaysFalse = v;
+        if (TryGetBoolProperty(root, "CheckNoUseAssign", out v))
+            config.CheckNoUseAssign = v;
+        if (TryGetBoolProperty(root, "CheckAnnotateType", out v))
+            config.CheckAnnotateType = v;
+        if (TryGetBoolProperty(root, "CheckDuplicateIf", out v))
+            config.CheckDuplicateIf = v;
+        if (TryGetBoolProperty(root, "CheckSelfAssign", out v))
+            config.CheckSelfAssign = v;
+        if (TryGetBoolProperty(root, "CheckFloatEq", out v))
+            config.CheckFloatEq = v;
+    }
+
+    private static bool TryGetBoolProperty(JsonElement root, string propertyName, out bool value)
+    {
+        if (TryGetProperty(root, propertyName, out var element))
+        {
+            if (element.ValueKind == JsonValueKind.True)
+            {
+                value = true;
+                return true;
+            }
+            if (element.ValueKind == JsonValueKind.False)
+            {
+                value = false;
+                return true;
+            }
+        }
+        value = false;
+        return false;
+    }
+
+    private static bool TryGetStringProperty(
+        JsonElement root,
+        string propertyName,
+        out string? value
+    )
+    {
+        if (
+            TryGetProperty(root, propertyName, out var element)
+            && element.ValueKind == JsonValueKind.String
+        )
+        {
+            value = element.GetString();
+            return !string.IsNullOrEmpty(value);
+        }
+        value = null;
+        return false;
     }
 
     private static bool TryGetProperty(JsonElement root, string propertyName, out JsonElement value)

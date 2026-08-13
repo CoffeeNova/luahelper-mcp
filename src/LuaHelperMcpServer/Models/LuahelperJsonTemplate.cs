@@ -39,7 +39,29 @@ public sealed class LuahelperJsonTemplate
     public string[] IgnoreFileVars { get; set; } = [];
     public string[] IgnoreReadFiles { get; set; } = [];
     public string[] IgnoreErrorTypes { get; set; } = [];
-    public string[] IgnoreFileOrFloder { get; set; } = [".vscode/", "Tests/"];
+    public string[] IgnoreFileOrFloder { get; set; } =
+        [
+            ".vscode/",
+            ".git/",
+            ".svn/",
+            ".hg/",
+            ".idea/",
+            ".gitignore",
+            "Tests/",
+            "build/",
+            "dist/",
+            "out/",
+            "bin/",
+            "target/",
+            ".cache/",
+            "generated/",
+            "vendor/",
+            "lib/",
+            "3rd/",
+            "Dependencies/",
+            "Lua/",
+            "node_modules/",
+        ];
     public string[] IgnoreFileErr { get; set; } = [];
     public string[] IgnoreFileErrTypes { get; set; } = [];
     public string[] ProtocolVars { get; set; } = [];

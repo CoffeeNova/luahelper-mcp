@@ -28,8 +28,8 @@ public sealed class LuaHelperConfig
     public bool CheckSelfAssign { get; set; } = false;
     public bool CheckFloatEq { get; set; } = false;
     public List<string> IgnoreModules { get; set; } = [];
-    public List<string> IgnoreFileOrDir { get; set; } = [".vscode/", "one11.lua"];
-    public List<string> IgnoreFileOrDirError { get; set; } = [".vscode/", "one11.lua"];
+    public List<string> IgnoreFileOrDir { get; set; } = [".vscode/"];
+    public List<string> IgnoreFileOrDirError { get; set; } = [".vscode/"];
     public string RequirePathSeparator { get; set; } = ".";
     public bool EnableReport { get; set; } = true;
 }

@@ -363,18 +363,17 @@ The extension:
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "mcpServers": [
+    "mcpServerDefinitionProviders": [
       {
-        "name": "luahelper",
-        "command": "node",
-        "args": ["${extensionPath}/out/server.js"]
+        "id": "luahelper",
+        "label": "LuaHelper MCP Server"
       }
     ]
   }
 }
 ```
 
-**Important:** VS Code supports `contributes.mcpServers` natively since recent versions. The extension can declare an MCP server that VS Code will auto-start.
+**Important:** VS Code registers extension MCP servers via `contributes.mcpServerDefinitionProviders` (in `package.json`) plus the `vscode.lm.registerMcpServerDefinitionProvider` API (stable since VS Code 1.101). There is **no** `contributes.mcpServers` contribution point — that key is silently ignored (confirmed Aug 2026 against the official [MCP developer guide](https://code.visualstudio.com/api/extension-guides/ai/mcp)).
 
 ---
 

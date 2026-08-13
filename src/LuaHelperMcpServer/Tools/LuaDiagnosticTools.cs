@@ -168,8 +168,9 @@ public sealed class LuaDiagnosticTools
         if (!File.Exists(filePath))
             return $"Error: File not found: {filePath}";
 
-        var config = await _configService.GetConfig(Path.GetDirectoryName(filePath)!, ct);
-        await _lspClient.EnsureInitializedAsync(config.ProjectPath, config, ct);
+        var projectPath = Path.GetDirectoryName(filePath)!;
+        var config = await _configService.GetConfig(projectPath, ct);
+        await EnsureLspReadyAsync(projectPath, config, ct);
         await _lspClient.OpenFileAsync(filePath, ct);
         var diagnostics = await _lspClient.GetDiagnosticsAsync(filePath, ct);
 
@@ -189,25 +190,34 @@ public sealed class LuaDiagnosticTools
             return $"Error: Directory not found: {projectPath}";
 
         var config = await _configService.GetConfig(projectPath, ct);
-        await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
+        await EnsureLspReadyAsync(projectPath, config, ct);
 
+        var ignoreDirs = BuildIgnoreSet(config.IgnoreFileOrDir);
         var luaFiles = Directory
             .EnumerateFiles(projectPath, "*.lua", SearchOption.AllDirectories)
-            .Where(f => !f.Contains("\\.vscode\\") && !f.Contains("\\Tests\\"))
+            .Where(f => !IsIgnoredFile(f, ignoreDirs))
             .ToList();
 
         foreach (var file in luaFiles)
             await _lspClient.OpenFileAsync(file, ct);
 
-        var diagnosticTasks = luaFiles
-            .Select(file => _lspClient.GetDiagnosticsAsync(file, ct))
-            .ToArray();
-        var diagnostics = await Task.WhenAll(diagnosticTasks)
-            .WaitAsync(TimeSpan.FromSeconds(30), ct);
-
         var byFile = new Dictionary<string, List<LuaDiagnostic>>();
-        for (var i = 0; i < luaFiles.Count; i++)
-            byFile[LspClient.PathToUri(luaFiles[i])] = diagnostics[i];
+        foreach (var file in luaFiles)
+        {
+            var uri = LspClient.PathToUri(file);
+            List<LuaDiagnostic> diagnostics;
+            try
+            {
+                diagnostics = await _lspClient
+                    .GetDiagnosticsAsync(file, ct)
+                    .WaitAsync(TimeSpan.FromSeconds(10), ct);
+            }
+            catch (TimeoutException)
+            {
+                diagnostics = [];
+            }
+            byFile[uri] = diagnostics;
+        }
 
         var collection = new DiagnosticCollection { ProjectPath = projectPath, ByFile = byFile };
         return collection.ToFormattedString();
@@ -229,6 +239,49 @@ public sealed class LuaDiagnosticTools
     public Task<string> GetLuahelperVersion(CancellationToken ct)
     {
         return Task.FromResult(_configService.GetVersion());
+    }
+
+    private async Task EnsureLspReadyAsync(
+        string projectPath,
+        LuaHelperConfig config,
+        CancellationToken ct
+    )
+    {
+        try
+        {
+            await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
+        }
+        catch (InvalidOperationException) when (
+            _lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed
+        )
+        {
+            await _lspClient.ShutdownAsync(ct);
+            await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
+        }
+    }
+
+    private static HashSet<string> BuildIgnoreSet(List<string>? ignoreFileOrDir)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in ignoreFileOrDir ?? [])
+        {
+            var trimmed = entry.Trim().TrimEnd('/', '\\');
+            if (trimmed.Length > 0)
+                set.Add(trimmed);
+        }
+
+        return set;
+    }
+
+    private static bool IsIgnoredFile(string filePath, HashSet<string> ignoreDirs)
+    {
+        foreach (var ignore in ignoreDirs)
+        {
+            if (filePath.IndexOf(ignore, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+        }
+
+        return false;
     }
 
     private static string FormatDiagnostics(string filePath, List<LuaDiagnostic> diagnostics)

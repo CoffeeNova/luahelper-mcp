@@ -8,7 +8,7 @@
 - **Plan:** `.github/docs/dev-plan-luahelper-mcp-server.md` (section "Phase 5: NativeAOT + Distribution", steps 5.1–5.4)
 - **Architecture:** `.github/docs/arch-luahelper-mcp-server.md` (section 11 Phase 5, section 12 project structure — `.github/workflows/ci.yml` + `release.yml` are planned)
 - **Skills:** read `.github/skills/phase-workflow/SKILL.md` before starting; `.github/skills/dotnet-project/SKILL.md` (csproj/publish), `.github/skills/mcp-sdk-csharp/SKILL.md` (AOT-safe `WithTools<T>` registration), `.github/skills/csharpier-formatting/SKILL.md` (format with `csharpier format src`), `.github/skills/nunit-testing/SKILL.md` (test conventions)
-- **Previous phase:** Phase 4 complete and committed to `main` — `.github/tools/fetch-lualsp.ps1` provisions `lualsp/win-x64/lualsp.exe` v0.2.29 (+`version.json`, sha256 `d4b9f67b…`), `vscode-extension/` wraps the MCP server (`contributes.mcpServers`), `.github/tools/build-vsix.ps1` packages `luahelper-mcp-0.1.0.vsix` (42 MB), extension installs and passes a full MCP handshake. 32 unit + 10 integration tests green. Repo root README does NOT exist yet; `.github/workflows/` does not exist yet.
+- **Previous phase:** Phase 4 complete and committed to `main` — `.github/tools/fetch-lualsp.ps1` provisions `lualsp/win-x64/lualsp.exe` v0.2.29 (+`version.json`, sha256 `d4b9f67b…`), `vscode-extension/` wraps the MCP server (`contributes.mcpServerDefinitionProviders` + `registerMcpServerDefinitionProvider`), `.github/tools/build-vsix.ps1` packages `luahelper-mcp-0.1.0.vsix` (42 MB), extension installs and passes a full MCP handshake. 32 unit + 10 integration tests green. Repo root README does NOT exist yet; `.github/workflows/` does not exist yet.
 
 ## Key facts already learned (do not re-discover)
 
@@ -27,7 +27,7 @@
 ### Extension packaging
 - `vscode-extension/package.json` still has placeholder `"publisher": "your-publisher-id"` and **no `repository` field** — both must be real before Marketplace publish (`vsce` needs `--allow-missing-repository` meanwhile; `npx --yes @vscode/vsce` is used).
 - `vsce package` warns: **LICENSE missing in the extension folder** (root `LICENSE` is MIT-only; per arch doc Q1 the repo needs a **BSD-3-Clause notice for lualsp.exe** added — the MIT license alone is not enough).
-- Engines `^1.99.0` (mcpServers contribution point), `"activationEvents": []` — keep.
+- Engines `^1.101.0` (`mcpServerDefinitionProviders` contribution point + `registerMcpServerDefinitionProvider` API; the old `contributes.mcpServers` key is ignored by VS Code), `"activationEvents": []` — keep.
 
 ### Testing / verification patterns
 - Integration tests read `LUAHELPER_EXTENSION_PATH` (expects `{path}/server/lualsp.exe`); run them against a temp dir containing a copy of the bundled binary (proven pattern in Phase 4) or set the env var.

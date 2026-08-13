@@ -1,0 +1,18 @@
+{
+  "ShowWarnFlag": 1,
+  "IgnoreModules": [
+    "print",
+    "pairs",
+    "ipairs",
+    "tostring",
+    "math",
+    "table",
+    "string",
+    "assert",
+    "error",
+    "undefinedGlobal"
+  ],
+  "IgnoreFileOrFloder": [".vscode/", ".git/", "Tests/"],
+  "IgnoreFileErr": [],
+  "PathSeparator": "."
+}

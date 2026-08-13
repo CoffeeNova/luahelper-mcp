@@ -9,8 +9,8 @@
     "type": "git",
     "url": "https://github.com/CoffeeNova/luahelper-mcp.git"
   },
-  "engines": {
-    "vscode": "^1.99.0"
+"engines": {
+    "vscode": "^1.101.0"
   },
   "categories": [
     "Linters",
@@ -18,12 +18,11 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [],
-  "contributes": {
-    "mcpServers": [
+"contributes": {
+    "mcpServerDefinitionProviders": [
       {
-        "name": "luahelper",
-        "command": "${extensionPath}/LuaHelperMcpServer.exe",
-        "args": []
+        "id": "luahelper",
+        "label": "LuaHelper MCP Server"
       }
     ]
   },
@@ -32,7 +31,7 @@
     "compile": "tsc -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.99.0",
+    "@types/vscode": "^1.101.0",
     "@types/node": "^20.0.0",
     "typescript": "^5.4.0"
   }

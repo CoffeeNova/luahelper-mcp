@@ -44,11 +44,36 @@ public sealed class DiagnosticResources
             return JsonSerializer.Serialize(cached, LspJson.IndentedCamelCase.ListLuaDiagnostic);
 
         var config = await _configService.GetConfig(Path.GetDirectoryName(filePath)!, ct);
-        await _lspClient.EnsureInitializedAsync(config.ProjectPath, config, ct);
+        await EnsureLspReadyAsync(config.ProjectPath, config, ct);
         await _lspClient.OpenFileAsync(filePath, ct);
-        var diagnostics = await _lspClient.GetDiagnosticsAsync(filePath, ct);
+        List<LuaDiagnostic> diagnostics;
+        try
+        {
+            diagnostics = await _lspClient
+                .GetDiagnosticsAsync(filePath, ct)
+                .WaitAsync(TimeSpan.FromSeconds(10), ct);
+        }
+        catch (TimeoutException)
+        {
+            diagnostics = [];
+        }
 
         return JsonSerializer.Serialize(diagnostics, LspJson.IndentedCamelCase.ListLuaDiagnostic);
+    }
+
+    private async Task EnsureLspReadyAsync(string projectPath, LuaHelperConfig config, CancellationToken ct)
+    {
+        try
+        {
+            await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
+        }
+        catch (InvalidOperationException) when (
+            _lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed
+        )
+        {
+            await _lspClient.ShutdownAsync(ct);
+            await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
+        }
     }
 
     [McpServerResource(
