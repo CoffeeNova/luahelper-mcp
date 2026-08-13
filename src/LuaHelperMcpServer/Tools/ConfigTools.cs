@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using LuaHelperMcpServer.Serialization;
 using LuaHelperMcpServer.Services;
 using ModelContextProtocol.Server;
 
@@ -8,12 +9,6 @@ namespace LuaHelperMcpServer.Tools;
 [McpServerToolType]
 public sealed class ConfigTools
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private readonly IConfigService _configService;
 
     public ConfigTools(IConfigService configService)
@@ -34,7 +29,7 @@ public sealed class ConfigTools
             return $"Error: Directory not found: {projectPath}";
 
         var config = await _configService.GetConfig(projectPath, ct);
-        return JsonSerializer.Serialize(config, JsonOptions);
+        return JsonSerializer.Serialize(config, LspJson.IndentedCamelCase.LuaHelperConfig);
     }
 
     [McpServerTool(Name = "create_luahelper_json")]

@@ -1,5 +1,6 @@
 using LuaHelperMcpServer.Services;
 using Microsoft.Extensions.Logging.Abstractions;
+using Shouldly;
 
 namespace LuaHelperMcpServer.Tests.Integration.Services;
 
@@ -10,27 +11,36 @@ public class ProcessManagerTests
     [Test]
     public async Task EnsureRunningAsync_SpawnsProcess()
     {
+        // Arrange
         using var manager = new ProcessManager(NullLogger<ProcessManager>.Instance, CmdExe, "/k");
+
+        // Act
         await manager.EnsureRunningAsync();
-        Assert.That(manager.IsRunning, Is.True);
+
+        // Assert
+        manager.IsRunning.ShouldBeTrue();
     }
 
     [Test]
     public async Task EnsureRunningAsync_AlreadyRunning_ReturnsExisting()
     {
+        // Arrange
         using var manager = new ProcessManager(NullLogger<ProcessManager>.Instance, CmdExe, "/k");
         await manager.EnsureRunningAsync();
         var firstProcess = await manager.GetProcessAsync();
 
+        // Act
         await manager.EnsureRunningAsync();
         var secondProcess = await manager.GetProcessAsync();
 
-        Assert.That(secondProcess, Is.SameAs(firstProcess));
+        // Assert
+        secondProcess.ShouldBeSameAs(firstProcess);
     }
 
     [Test]
     public async Task ProcessExited_EventFires()
     {
+        // Arrange
         using var manager = new ProcessManager(
             NullLogger<ProcessManager>.Instance,
             CmdExe,
@@ -41,33 +51,41 @@ public class ProcessManagerTests
         );
         manager.ProcessExited += (_, _) => exitedTcs.TrySetResult();
 
+        // Act
         await manager.EnsureRunningAsync();
         await exitedTcs.Task.WaitAsync(TimeSpan.FromSeconds(10));
 
-        Assert.That(manager.IsRunning, Is.False);
+        // Assert
+        manager.IsRunning.ShouldBeFalse();
     }
 
     [Test]
     public async Task ShutdownAsync_GracefulExit()
     {
+        // Arrange
         using var manager = new ProcessManager(NullLogger<ProcessManager>.Instance, CmdExe, "/k");
         await manager.EnsureRunningAsync();
-        Assert.That(manager.IsRunning, Is.True);
+        manager.IsRunning.ShouldBeTrue();
 
+        // Act
         await manager.ShutdownAsync();
 
-        Assert.That(manager.IsRunning, Is.False);
+        // Assert
+        manager.IsRunning.ShouldBeFalse();
     }
 
     [Test]
     public async Task ForceKill_TerminatesProcess()
     {
+        // Arrange
         using var manager = new ProcessManager(NullLogger<ProcessManager>.Instance, CmdExe, "/k");
         await manager.EnsureRunningAsync();
-        Assert.That(manager.IsRunning, Is.True);
+        manager.IsRunning.ShouldBeTrue();
 
+        // Act
         manager.ForceKill();
 
-        Assert.That(manager.IsRunning, Is.False);
+        // Assert
+        manager.IsRunning.ShouldBeFalse();
     }
 }

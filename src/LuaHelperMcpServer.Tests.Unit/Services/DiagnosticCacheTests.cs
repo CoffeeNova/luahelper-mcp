@@ -1,5 +1,6 @@
 using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
+using Shouldly;
 
 namespace LuaHelperMcpServer.Tests.Unit.Services;
 
@@ -10,6 +11,7 @@ public class DiagnosticCacheTests
     [Test]
     public void StoreDiagnostics_GetDiagnostics_ReturnsSameList()
     {
+        // Arrange
         var uri = "file:///test.lua";
         var diagnostics = new List<LuaDiagnostic>
         {
@@ -21,26 +23,31 @@ public class DiagnosticCacheTests
             },
         };
 
+        // Act
         _cache.StoreDiagnostics(uri, diagnostics);
         var result = _cache.GetDiagnostics(uri);
 
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result, Has.Count.EqualTo(1));
-        Assert.That(result[0].Message, Is.EqualTo("Test warning"));
-        Assert.That(result[0].Severity, Is.EqualTo(DiagnosticSeverity.Warning));
+        // Assert
+        result.ShouldNotBeNull();
+        result.Count.ShouldBe(1);
+        result[0].Message.ShouldBe("Test warning");
+        result[0].Severity.ShouldBe(DiagnosticSeverity.Warning);
     }
 
     [Test]
     public void GetDiagnostics_NotInCache_ReturnsNull()
     {
+        // Act
         var result = _cache.GetDiagnostics("file:///nonexistent.lua");
 
-        Assert.That(result, Is.Null);
+        // Assert
+        result.ShouldBeNull();
     }
 
     [Test]
     public void GetAllDiagnostics_ReturnsAll()
     {
+        // Arrange
         _cache.StoreDiagnostics(
             "file:///a.lua",
             new List<LuaDiagnostic> { new() { Message = "A" } }
@@ -50,51 +57,62 @@ public class DiagnosticCacheTests
             new List<LuaDiagnostic> { new() { Message = "B" } }
         );
 
+        // Act
         var all = _cache.GetAllDiagnostics();
 
-        Assert.That(all, Has.Count.EqualTo(2));
-        Assert.That(all.Keys, Does.Contain("file:///a.lua"));
-        Assert.That(all.Keys, Does.Contain("file:///b.lua"));
+        // Assert
+        all.Count.ShouldBe(2);
+        all.ShouldContainKey("file:///a.lua");
+        all.ShouldContainKey("file:///b.lua");
     }
 
     [Test]
     public void Clear_RemovesAll()
     {
+        // Arrange
         _cache.StoreDiagnostics(
             "file:///test.lua",
             new List<LuaDiagnostic> { new() { Message = "X" } }
         );
         _cache.StoreFileContent("file:///test.lua", "local x = 1");
 
+        // Act
         _cache.Clear();
 
-        Assert.That(_cache.GetDiagnostics("file:///test.lua"), Is.Null);
-        Assert.That(_cache.GetFileContent("file:///test.lua"), Is.Null);
-        Assert.That(_cache.GetAllDiagnostics(), Is.Empty);
+        // Assert
+        _cache.GetDiagnostics("file:///test.lua").ShouldBeNull();
+        _cache.GetFileContent("file:///test.lua").ShouldBeNull();
+        _cache.GetAllDiagnostics().ShouldBeEmpty();
     }
 
     [Test]
     public void StoreFileContent_GetFileContent_RoundTrip()
     {
+        // Arrange
         var uri = "file:///test.lua";
         var content = "local x = 1";
 
+        // Act
         _cache.StoreFileContent(uri, content);
         var result = _cache.GetFileContent(uri);
 
-        Assert.That(result, Is.EqualTo(content));
+        // Assert
+        result.ShouldBe(content);
     }
 
     [Test]
     public void GetOpenedFileUris_ReturnsStoredUris()
     {
+        // Arrange
         _cache.StoreFileContent("file:///a.lua", "a");
         _cache.StoreFileContent("file:///b.lua", "b");
 
+        // Act
         var uris = _cache.GetOpenedFileUris().ToList();
 
-        Assert.That(uris, Does.Contain("file:///a.lua"));
-        Assert.That(uris, Does.Contain("file:///b.lua"));
-        Assert.That(uris, Has.Count.EqualTo(2));
+        // Assert
+        uris.ShouldContain("file:///a.lua");
+        uris.ShouldContain("file:///b.lua");
+        uris.Count.ShouldBe(2);
     }
 }

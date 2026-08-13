@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using LuaHelperMcpServer.Serialization;
 
 namespace LuaHelperMcpServer.Services;
 
@@ -77,7 +78,7 @@ public sealed class LspMessageReader
         // Parse the JSON body
         var bodyBytes = _buffer.GetRange(bodyStart, contentLength.Value).ToArray();
         var body = Encoding.UTF8.GetString(bodyBytes);
-        result = JsonSerializer.Deserialize<JsonElement>(body);
+        result = JsonSerializer.Deserialize(body, LspJson.Default.JsonElement);
         _buffer.RemoveRange(0, bodyEnd);
         return true;
     }

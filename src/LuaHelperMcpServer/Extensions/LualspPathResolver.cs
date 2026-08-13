@@ -1,8 +1,20 @@
+using System.Runtime.InteropServices;
+
 namespace LuaHelperMcpServer.Extensions;
 
 public static class LualspPathResolver
 {
-    private const string DefaultLualspPath = "lualsp/win-x64/lualsp.exe";
+    public static string DefaultLualspPath
+    {
+        get
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return "lualsp/win-x64/lualsp.exe";
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return "lualsp/osx-x64/lualsp";
+            return "lualsp/linux-x64/lualsp";
+        }
+    }
 
     public static string Resolve(string? path)
     {

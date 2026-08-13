@@ -9,27 +9,64 @@ Use when writing, fixing, or running tests in this project.
 | `Tests.Unit` | Service-level unit tests | No filesystem, no real processes, no network |
 | `Tests.Integration` | End-to-end tests | Real lualsp.exe, real files, real processes |
 
-## NUnit vs xUnit mapping
+## Assertions with Shouldly
 
-| xUnit | NUnit |
+All assertions use [Shouldly](https://docs.shouldly.org/) (4.3.0, BSD-3-Clause) — never
+`Assert.That`/`Assert.AreEqual` constraint syntax. One `using Shouldly;` per file.
+
+| NUnit classic | Shouldly |
 |---|---|
-| `[Fact]` | `[Test]` |
-| `[Theory]` + `[InlineData]` | `[TestCase]` |
-| `Assert.Equal(a, b)` | `Assert.That(b, Is.EqualTo(a))` |
-| `Assert.NotNull(x)` | `Assert.That(x, Is.Not.Null)` |
-| `Assert.Null(x)` | `Assert.That(x, Is.Null)` |
-| `Assert.True(x)` | `Assert.That(x, Is.True)` |
-| `Assert.False(x)` | `Assert.That(x, Is.False)` |
-| `Assert.Empty(x)` | `Assert.That(x, Is.Empty)` |
-| `Assert.NotEmpty(x)` | `Assert.That(x, Is.Not.Empty)` |
-| `Assert.Contains(x, list)` | `Assert.That(list, Does.Contain(x))` |
-| `Assert.Contains(x, pred)` | `Assert.That(list, Has.Some.Matches(pred))` |
-| `Assert.ThrowsAsync<T>(...)` | `Assert.ThrowsAsync<T>(...)` |
-| `Assert.ThrowsAnyAsync<T>(...)` | `Assert.CatchAsync<T>(...)` |
-| `Assert.Same(a, b)` | `Assert.That(b, Is.SameAs(a))` |
-| `Assert.DoesNotContain(x, text)` | `Assert.That(text, Does.Not.Contain(x))` |
-| Constructor setup | `[SetUp]` method |
-| `IDisposable` + `Dispose()` | `[TearDown]` method |
+| `Assert.That(a, Is.EqualTo(b))` | `a.ShouldBe(b)` |
+| `Assert.That(a, Is.Not.EqualTo(b))` | `a.ShouldNotBe(b)` |
+| `Assert.That(x, Is.Null)` | `x.ShouldBeNull()` |
+| `Assert.That(x, Is.Not.Null)` | `x.ShouldNotBeNull()` |
+| `Assert.That(x, Is.True/False)` | `x.ShouldBeTrue()/ShouldBeFalse()` |
+| `Assert.That(coll, Is.Empty)` | `coll.ShouldBeEmpty()` |
+| `Assert.That(coll, Is.Not.Empty)` | `coll.ShouldNotBeEmpty()` |
+| `Assert.That(list, Has.Count.EqualTo(n))` | `list.Count.ShouldBe(n)` |
+| `Assert.That(text, Does.Contain(s))` | `text.ShouldContain(s, Case.Sensitive)` |
+| `Assert.That(text, Does.Not.Contain(s))` | `text.ShouldNotContain(s, Case.Sensitive)` |
+| `Assert.That(text, Does.Contain(s).IgnoreCase)` | `text.ShouldContain(s, Case.Insensitive)` |
+| `Assert.That(result, Does.Match(pattern))` | `result.ShouldMatch(pattern)` (standard .NET regex, not implicitly anchored) |
+| `Assert.That(dict, Does.ContainKey(k))` | `dict.ShouldContainKey(k)` |
+| `Assert.That(a, Is.SameAs(b))` | `a.ShouldBeSameAs(b)` |
+| `Assert.CatchAsync<T>(async () => ...)` | `await Should.ThrowAsync<T>(async () => ...)` — MUST be awaited |
+
+Notes:
+- Shouldly 4.x `ShouldContain`/`ShouldStartWith`/`ShouldEndWith` default to
+  case-insensitive — always pass `Case.Sensitive`/`Case.Insensitive` explicitly.
+- `ShouldBe` on collections is order-sensitive and element-wise; `ShouldHaveCount`
+  is v5-only — use `Count.ShouldBe(n)` on 4.x.
+- `Should.ThrowAsync<T>` catches exact type and derived types (like NUnit's `CatchAsync`).
+- `Assert.Ignore` in integration tests is runner flow-control (skips), not an
+  assertion — it stays even with Shouldly.
+
+## Mocking with NSubstitute + AutoFixture
+
+- **NSubstitute 5.3.0** — behavior stubbing and verification.
+- **AutoFixture 4.18.1** (+ `AutoFixture.AutoNSubstitute`) — creates substitutes
+  automatically for interface dependencies.
+
+```csharp
+using AutoFixture;
+using AutoFixture.AutoNSubstitute;
+using NSubstitute;
+
+private static readonly IFixture Fixture = new Fixture().Customize(new AutoNSubstituteCustomization());
+
+// AutoFixture creates an auto-mocked substitute for any interface:
+var fileReader = Fixture.Create<IFileReader>();
+
+// Configure it with NSubstitute:
+fileReader.FileExists(Arg.Any<string>()).Returns(true);
+fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns("file content");
+```
+
+Verification (MUST `await` async members):
+
+```csharp
+await fileReader.DidNotReceive().ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+```
 
 ## AAA pattern
 
@@ -38,25 +75,16 @@ Use when writing, fixing, or running tests in this project.
 public async Task MethodName_Scenario_ExpectedBehavior()
 {
     // Arrange
-    var mock = new Mock<IDependency>();
-    mock.Setup(m => m.Method()).ReturnsAsync(expectedValue);
+    var dependency = Fixture.Create<IDependency>();
+    dependency.Method().Returns(expectedValue);
 
     // Act
     var result = await _sut.MethodUnderTest();
 
     // Assert
-    Assert.That(result, Is.Not.Null);
-    Assert.That(result.Message, Does.Contain("expected"));
+    result.ShouldNotBeNull();
+    result.Message.ShouldContain("expected", Case.Sensitive);
 }
-```
-
-## Mocking with Moq
-
-```csharp
-var mock = new Mock<IFileReader>();
-mock.Setup(f => f.FileExists(It.IsAny<string>())).Returns(true);
-mock.Setup(f => f.ReadAllTextAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-    .ReturnsAsync("file content");
 ```
 
 ## FakeLspServer pattern
@@ -67,7 +95,8 @@ For testing LspClient without a real lualsp.exe:
 var fakeServer = new FakeLspServer();  // Anonymous pipes
 var processManager = new MockProcessManager(fakeServer);
 var cache = new DiagnosticCache();
-var client = new LspClient(processManager, cache, NullLogger<LspClient>.Instance, fileReaderMock.Object);
+var fileReader = Fixture.Create<IFileReader>();
+var client = new LspClient(processManager, cache, NullLogger<LspClient>.Instance, fileReader);
 
 fakeServer.Start();
 await client.EnsureInitializedAsync("C:\\test", config);
@@ -77,14 +106,14 @@ The `FakeLspServer` responds to `initialize`, `didOpen` (with fake diagnostics),
 
 ## Meaningful assertions
 
-**Bad:** `Assert.NotEmpty(diagnostics);`
+**Bad:** `diagnostics.ShouldNotBeEmpty();`
 
 **Good:**
 ```csharp
-Assert.That(diagnostics, Is.Not.Empty);
-Assert.That(diagnostics[0].Message, Does.Contain("Frame"));
-Assert.That(diagnostics[0].Severity, Is.EqualTo(DiagnosticSeverity.Warning));
-Assert.That(diagnostics[0].StartLine, Is.EqualTo(0));
+diagnostics.ShouldNotBeEmpty();
+diagnostics[0].Message.ShouldContain("Frame", Case.Insensitive);
+diagnostics[0].Severity.ShouldBe(DiagnosticSeverity.Warning);
+diagnostics[0].StartLine.ShouldBe(0);
 ```
 
 ## Running tests

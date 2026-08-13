@@ -1,31 +1,39 @@
+using AutoFixture;
+using AutoFixture.AutoNSubstitute;
 using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
 using LuaHelperMcpServer.Tests.Unit.Helpers;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
+using Shouldly;
 
 namespace LuaHelperMcpServer.Tests.Unit.Services;
 
 public class LspClientTests
 {
+    private static readonly IFixture Fixture = new Fixture().Customize(
+        new AutoNSubstituteCustomization()
+    );
+
     private FakeLspServer _fakeServer = null!;
     private MockProcessManager _processManager = null!;
     private DiagnosticCache _cache = null!;
     private LspClient _client = null!;
-    private Mock<IFileReader> _fileReaderMock = null!;
+    private IFileReader _fileReader = null!;
 
     [SetUp]
     public void SetUp()
     {
+        // Arrange
         _fakeServer = new FakeLspServer();
         _processManager = new MockProcessManager(_fakeServer);
         _cache = new DiagnosticCache();
-        _fileReaderMock = new Mock<IFileReader>();
+        _fileReader = Fixture.Create<IFileReader>();
         _client = new LspClient(
             _processManager,
             _cache,
             NullLogger<LspClient>.Instance,
-            _fileReaderMock.Object
+            _fileReader
         );
     }
 
@@ -39,109 +47,119 @@ public class LspClientTests
     [Test]
     public async Task EnsureInitializedAsync_SendsInitialize_ReceivesCapabilities()
     {
+        // Arrange
         _fakeServer.Start();
 
+        // Act
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
 
-        Assert.That(_client.State, Is.EqualTo(LspState.Ready));
+        // Assert
+        _client.State.ShouldBe(LspState.Ready);
     }
 
     [Test]
     public async Task EnsureInitializedAsync_SetsProjectPath()
     {
+        // Arrange
         _fakeServer.Start();
 
+        // Act
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
 
-        Assert.That(_client.ProjectPath, Is.EqualTo("C:\\test"));
+        // Assert
+        _client.ProjectPath.ShouldBe("C:\\test");
     }
 
     [Test]
     public async Task OpenFileAsync_SendsDidOpen()
     {
+        // Arrange
         var testFile = "C:\\test\\test.lua";
-        _fileReaderMock.Setup(f => f.FileExists(testFile)).Returns(true);
-        _fileReaderMock
-            .Setup(f => f.ReadAllTextAsync(testFile, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("local x = 1");
-
+        _fileReader.FileExists(testFile).Returns(true);
+        _fileReader.ReadAllTextAsync(testFile, Arg.Any<CancellationToken>()).Returns("local x = 1");
         _fakeServer.Start();
+
+        // Act
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
         await _client.OpenFileAsync(testFile);
 
+        // Assert
         var uri = LspClient.PathToUri(testFile);
-        Assert.That(_cache.GetFileContent(uri), Is.EqualTo("local x = 1"));
+        _cache.GetFileContent(uri).ShouldBe("local x = 1");
     }
 
     [Test]
     public async Task GetDiagnosticsAsync_ReceivesPublishDiagnostics()
     {
+        // Arrange
         var testFile = "C:\\test\\test.lua";
-        _fileReaderMock.Setup(f => f.FileExists(testFile)).Returns(true);
-        _fileReaderMock
-            .Setup(f => f.ReadAllTextAsync(testFile, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("local x = 1");
-
+        _fileReader.FileExists(testFile).Returns(true);
+        _fileReader.ReadAllTextAsync(testFile, Arg.Any<CancellationToken>()).Returns("local x = 1");
         _fakeServer.Start();
+
+        // Act
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
         await _client.OpenFileAsync(testFile);
-
         var diagnostics = await _client.GetDiagnosticsAsync(testFile);
 
-        Assert.That(diagnostics, Is.Not.Empty);
-        Assert.That(diagnostics[0].Message, Does.Contain("Test warning"));
-        Assert.That(diagnostics[0].Severity, Is.EqualTo(DiagnosticSeverity.Warning));
-        Assert.That(diagnostics[0].WarningType, Is.EqualTo(1));
-        Assert.That(diagnostics[0].StartLine, Is.EqualTo(0));
-        Assert.That(diagnostics[0].StartCharacter, Is.EqualTo(0));
+        // Assert
+        diagnostics.ShouldNotBeEmpty();
+        diagnostics[0].Message.ShouldContain("Test warning", Case.Sensitive);
+        diagnostics[0].Severity.ShouldBe(DiagnosticSeverity.Warning);
+        diagnostics[0].WarningType.ShouldBe(1);
+        diagnostics[0].StartLine.ShouldBe(0);
+        diagnostics[0].StartCharacter.ShouldBe(0);
     }
 
     [Test]
     public async Task GetAllDiagnostics_ReturnsAllDiagnostics()
     {
+        // Arrange
         var testFile = "C:\\test\\test.lua";
-        _fileReaderMock.Setup(f => f.FileExists(testFile)).Returns(true);
-        _fileReaderMock
-            .Setup(f => f.ReadAllTextAsync(testFile, It.IsAny<CancellationToken>()))
-            .ReturnsAsync("local x = 1");
-
+        _fileReader.FileExists(testFile).Returns(true);
+        _fileReader.ReadAllTextAsync(testFile, Arg.Any<CancellationToken>()).Returns("local x = 1");
         _fakeServer.Start();
+
+        // Act
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
         await _client.OpenFileAsync(testFile);
         await _client.GetDiagnosticsAsync(testFile);
-
         var all = _client.GetAllDiagnostics();
 
-        Assert.That(all, Is.Not.Empty);
-        Assert.That(all.Values.Sum(d => d.Count), Is.EqualTo(1));
+        // Assert
+        all.ShouldNotBeEmpty();
+        all.Values.Sum(d => d.Count).ShouldBe(1);
     }
 
     [Test]
     public async Task ShutdownAsync_ChangesStateToStopped()
     {
+        // Arrange
         _fakeServer.Start();
         await _client.EnsureInitializedAsync(
             "C:\\test",
             new LuaHelperConfig { PluginPath = "C:\\test" }
         );
 
+        // Act
         await _client.ShutdownAsync();
 
-        Assert.That(_client.State, Is.EqualTo(LspState.Stopped));
+        // Assert
+        _client.State.ShouldBe(LspState.Stopped);
     }
 }

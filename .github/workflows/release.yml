@@ -1,0 +1,195 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Determine version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.determine.outputs.version }}
+      tag: ${{ steps.determine.outputs.tag }}
+      should-release: ${{ steps.determine.outputs.should-release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: determine
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $shouldRelease = "true"
+          if ($env:GITHUB_REF_TYPE -eq "tag") {
+            $version = $env:GITHUB_REF_NAME.TrimStart('v')
+            if ($version -notmatch '^\d+\.\d+\.\d+$') {
+              throw "Tag $env:GITHUB_REF_NAME is not a valid semver tag (expected vMAJOR.MINOR.PATCH)."
+            }
+            if (gh release view $env:GITHUB_REF_NAME --json tagName -q .tagName 2>$null) {
+              $shouldRelease = "false"
+              Write-Host "Release $env:GITHUB_REF_NAME already exists - skipping."
+            }
+          }
+          else {
+            $latest = git describe --tags --abbrev=0 2>$null
+            if ($latest -and $latest -match '^v?\d+\.\d+\.\d+$') {
+              $parts = $latest.TrimStart('v').Split('.')
+              $version = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
+            }
+            else {
+              $version = "0.1.0"
+            }
+          }
+          "version=$version" | Out-File $env:GITHUB_OUTPUT -Append
+          "tag=v$version" | Out-File $env:GITHUB_OUTPUT -Append
+          "should-release=$shouldRelease" | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "Version: $version (ref type: $env:GITHUB_REF_TYPE, ref: $env:GITHUB_REF_NAME)"
+
+  build-server:
+    name: Publish server (${{ matrix.rid }})
+    needs: version
+    if: needs.version.outputs.should-release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: osx-x64
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Provision lualsp (${{ matrix.rid }})
+        shell: pwsh
+        run: .\.github\tools\fetch-lualsp.ps1 -Rid ${{ matrix.rid }} -Update
+
+      - name: Publish NativeAOT
+        shell: pwsh
+        run: |
+          dotnet publish src/LuaHelperMcpServer -c Release -r ${{ matrix.rid }} --self-contained `
+            -p:PublishAot=true -p:InvariantGlobalization=true -p:Version=$env:VERSION -o publish/${{ matrix.rid }}
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path publish/${{ matrix.rid }}/lualsp/${{ matrix.rid }} -Force | Out-Null
+          if ("${{ matrix.rid }}".StartsWith("win")) {
+            Copy-Item lualsp/${{ matrix.rid }}/lualsp.exe publish/${{ matrix.rid }}/lualsp/${{ matrix.rid }}/lualsp.exe -Force
+          } else {
+            Copy-Item lualsp/${{ matrix.rid }}/lualsp publish/${{ matrix.rid }}/lualsp/${{ matrix.rid }}/lualsp -Force
+            chmod +x publish/${{ matrix.rid }}/LuaHelperMcpServer publish/${{ matrix.rid }}/lualsp/${{ matrix.rid }}/lualsp
+          }
+          Copy-Item lualsp/version.json publish/${{ matrix.rid }}/lualsp/version.json -Force
+
+      - name: MCP handshake smoke test
+        shell: pwsh
+        run: |
+          if ("${{ matrix.rid }}".StartsWith("win")) {
+            .\.github\tools\smoke-test-mcp.ps1 -ServerPath publish/${{ matrix.rid }}/LuaHelperMcpServer.exe -ExpectedVersion $env:VERSION
+          } else {
+            .\.github\tools\smoke-test-mcp.ps1 -ServerPath publish/${{ matrix.rid }}/LuaHelperMcpServer -ExpectedVersion $env:VERSION
+          }
+
+      - name: Zip release assets
+        shell: pwsh
+        run: |
+          $asset = "luahelper-mcp-server-${{ matrix.rid }}-$env:VERSION.zip"
+          Push-Location publish/${{ matrix.rid }}
+          Compress-Archive -Path * -DestinationPath $asset -Force
+          Pop-Location
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luahelper-mcp-server-${{ matrix.rid }}-${{ needs.version.outputs.version }}.zip
+          path: publish/${{ matrix.rid }}/luahelper-mcp-server-${{ matrix.rid }}-*.zip
+          retention-days: 14
+
+  build-vsix:
+    name: Package VS Code extension
+    needs: version
+    if: needs.version.outputs.should-release == 'true'
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build VSIX
+        shell: pwsh
+        run: .\.github\tools\build-vsix.ps1 -Version $env:VERSION
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luahelper-mcp-${{ needs.version.outputs.version }}.vsix
+          path: vscode-extension/luahelper-mcp-*.vsix
+          retention-days: 14
+
+  release:
+    name: Create GitHub release
+    needs: [version, build-server, build-vsix]
+    if: needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$TAG" --json tagName -q .tagName 2>/dev/null; then
+            echo "Release $TAG already exists - skipping."
+            exit 0
+          fi
+          ASSETS=""
+          for f in artifacts/*/*.zip artifacts/*/*.vsix; do
+            [ -f "$f" ] && ASSETS="$ASSETS --attach $f"
+          done
+          {
+            echo "LuaHelper MCP Server $VERSION"
+            echo ""
+            echo "- **luahelper-mcp-server-{rid}-$VERSION.zip** - NativeAOT single-file binary + bundled lualsp per platform (win-x64, linux-x64, osx-x64)"
+            echo "- **luahelper-mcp-$VERSION.vsix** - VS Code extension (one-click install, auto-registers the MCP server)"
+            echo ""
+            echo "See the README: https://github.com/CoffeeNova/luahelper-mcp#readme"
+          } > /tmp/release-notes.md
+          gh release create "$TAG" $ASSETS \
+            --title "LuaHelper MCP Server $VERSION" \
+            --notes-file /tmp/release-notes.md

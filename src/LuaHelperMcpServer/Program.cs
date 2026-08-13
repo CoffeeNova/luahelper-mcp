@@ -1,5 +1,8 @@
 ﻿using LuaHelperMcpServer.Extensions;
 using LuaHelperMcpServer.Models;
+using LuaHelperMcpServer.Prompts;
+using LuaHelperMcpServer.Resources;
+using LuaHelperMcpServer.Tools;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,9 +26,11 @@ builder.Logging.AddConsole(options =>
 builder
     .Services.AddMcpServer()
     .WithStdioServerTransport()
-    .WithToolsFromAssembly()
-    .WithResourcesFromAssembly()
-    .WithPromptsFromAssembly();
+    .WithTools<LuaDiagnosticTools>()
+    .WithTools<ConfigTools>()
+    .WithTools<VersionTools>()
+    .WithResources<DiagnosticResources>()
+    .WithPrompts<LuaHelperPrompts>();
 
 builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("LuaHelper"));
 builder.Services.AddLuaHelperServices();

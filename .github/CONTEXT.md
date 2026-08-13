@@ -21,7 +21,7 @@ A .NET 10 application that wraps Tencent's `lualsp.exe` (a Go-based LSP server f
 | MCP SDK | `ModelContextProtocol` (NuGet) |
 | JSON | `System.Text.Json` |
 | Logging | `Microsoft.Extensions.Logging` + Console (stderr) |
-| Testing | NUnit + Moq |
+| Testing | NUnit + Shouldly + NSubstitute + AutoFixture |
 | LSP Server | `lualsp.exe` (LuaHelper v0.2.29) |
 | Formatter | CSharpier |
 
@@ -90,7 +90,8 @@ luahelper-mcp/
 ### Testing
 - Unit tests must NOT touch filesystem or spawn real processes
 - Use `FakeLspServer` (anonymous pipes) + `MockProcessManager` for LspClient tests
-- Use `Moq` + `IFileReader` to mock file I/O
+- Use `NSubstitute` (+ `AutoFixture` with `AutoNSubstituteCustomization`) + `IFileReader` to mock file I/O
+- All assertions use `Shouldly` (e.g. `x.ShouldBe(y)`, `text.ShouldContain(s, Case.Sensitive)`); never `Assert.That` constraint syntax
 - Integration tests use real `lualsp.exe` from `LUAHELPER_EXTENSION_PATH` env var
 - Integration tests skip gracefully with `Assert.Ignore` if lualsp.exe not found
 

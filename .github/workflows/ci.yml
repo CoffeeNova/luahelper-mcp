@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    name: Build + tests
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Provision lualsp (win-x64)
+        shell: pwsh
+        run: .\.github\tools\fetch-lualsp.ps1 -Rid win-x64 -Update
+
+      - name: Build solution
+        shell: pwsh
+        run: .\.github\tools\build.ps1
+
+      - name: Unit tests
+        shell: pwsh
+        run: dotnet test src\LuaHelperMcpServer.Tests.Unit -c Release
+
+      - name: Integration tests
+        shell: pwsh
+        run: |
+          $ext = Join-Path $env:TEMP "luahelper-ext-ci"
+          New-Item -ItemType Directory -Path (Join-Path $ext "server") -Force | Out-Null
+          Copy-Item lualsp\win-x64\lualsp.exe (Join-Path $ext "server\lualsp.exe") -Force
+          $env:LUAHELPER_EXTENSION_PATH = $ext
+          dotnet test src\LuaHelperMcpServer.Tests.Integration -c Release
+
+  aot-win-x64:
+    name: NativeAOT win-x64 + handshake
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Provision lualsp (win-x64)
+        shell: pwsh
+        run: .\.github\tools\fetch-lualsp.ps1 -Rid win-x64 -Update
+
+      - name: Publish NativeAOT
+        shell: pwsh
+        run: |
+          dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained `
+            -p:PublishAot=true -p:InvariantGlobalization=true -o publish\win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path publish\win-x64\lualsp\win-x64 -Force | Out-Null
+          Copy-Item lualsp\win-x64\lualsp.exe publish\win-x64\lualsp\win-x64\lualsp.exe -Force
+
+      - name: MCP handshake smoke test
+        shell: pwsh
+        run: .\.github\tools\smoke-test-mcp.ps1 -ServerPath publish\win-x64\LuaHelperMcpServer.exe -ExpectedVersion 0.1.0
+
+      - name: Check single-file AOT output
+        shell: pwsh
+        run: |
+          $exe = Get-Item publish\win-x64\LuaHelperMcpServer.exe
+          Write-Host "LuaHelperMcpServer.exe size: $($exe.Length) bytes"
+          $managed = Get-ChildItem publish\win-x64 -Filter *.dll | Where-Object { $_.Name -notlike "*.resources.dll" }
+          if ($managed.Count -gt 0) {
+            Write-Host "WARNING: managed DLLs present (not pure AOT): $($managed.Name -join ', ')"
+          }
+          if ($exe.Length -lt 5000000) {
+            throw "AOT executable unexpectedly small ($($exe.Length) bytes)."
+          }
+
+      - name: Upload AOT artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: luahelper-mcp-server-win-x64
+          path: publish\win-x64
+          retention-days: 14

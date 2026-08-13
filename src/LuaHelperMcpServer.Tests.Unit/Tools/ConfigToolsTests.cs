@@ -1,64 +1,77 @@
+using AutoFixture;
+using AutoFixture.AutoNSubstitute;
 using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
 using LuaHelperMcpServer.Tools;
-using Moq;
+using NSubstitute;
+using Shouldly;
 
 namespace LuaHelperMcpServer.Tests.Unit.Tools;
 
 public class ConfigToolsTests
 {
-    private Mock<IConfigService> _configServiceMock = null!;
+    private static readonly IFixture Fixture = new Fixture().Customize(
+        new AutoNSubstituteCustomization()
+    );
+
+    private IConfigService _configService = null!;
     private ConfigTools _tools = null!;
 
     [SetUp]
     public void SetUp()
     {
-        _configServiceMock = new Mock<IConfigService>();
-        _tools = new ConfigTools(_configServiceMock.Object);
+        // Arrange
+        _configService = Fixture.Create<IConfigService>();
+        _tools = new ConfigTools(_configService);
     }
 
     [Test]
     public async Task GetLuahelperConfig_InvalidDirectory_ReturnsError()
     {
+        // Act
         var result = await _tools.GetLuahelperConfig(
             "C:\\does\\not\\exist",
             CancellationToken.None
         );
 
-        Assert.That(result, Does.Contain("Error: Directory not found"));
+        // Assert
+        result.ShouldContain("Error: Directory not found", Case.Sensitive);
     }
 
     [Test]
     public async Task GetLuahelperConfig_ValidDirectory_ReturnsConfigJson()
     {
+        // Arrange
         var config = new LuaHelperConfig { ProjectPath = AppContext.BaseDirectory };
-        _configServiceMock
-            .Setup(c => c.GetConfig(AppContext.BaseDirectory, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(config);
+        _configService
+            .GetConfig(AppContext.BaseDirectory, Arg.Any<CancellationToken>())
+            .Returns(config);
 
+        // Act
         var result = await _tools.GetLuahelperConfig(
             AppContext.BaseDirectory,
             CancellationToken.None
         );
 
+        // Assert
         using var doc = System.Text.Json.JsonDocument.Parse(result);
         var projectPath = doc.RootElement.GetProperty("projectPath").GetString();
-
-        Assert.That(projectPath, Is.EqualTo(AppContext.BaseDirectory));
+        projectPath.ShouldBe(AppContext.BaseDirectory);
     }
 
     [Test]
     public async Task CreateLuahelperJson_InvalidDirectory_ReturnsError()
     {
+        // Act
         var result = await _tools.CreateLuahelperJson(
             "C:\\does\\not\\exist",
             CancellationToken.None
         );
 
-        Assert.That(result, Does.Contain("Error: Directory not found"));
-        _configServiceMock.Verify(
-            c => c.CreateDefaultConfig(It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never
-        );
+        // Assert
+        result.ShouldContain("Error: Directory not found", Case.Sensitive);
+        await _configService
+            .DidNotReceive()
+            .CreateDefaultConfig(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

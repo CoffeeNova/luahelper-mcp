@@ -2,6 +2,7 @@ using LuaHelperMcpServer.Models;
 using LuaHelperMcpServer.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Shouldly;
 
 namespace LuaHelperMcpServer.Tests.Integration.Services;
 
@@ -42,9 +43,9 @@ public class LspClientIntegrationTests
     [Test]
     public async Task CheckFile_WithWarning_ReturnsDiagnostics()
     {
+        // Arrange
         var fixturesDir = Path.Combine(AppContext.BaseDirectory, "Fixtures");
         var testFile = Path.Combine(fixturesDir, "test_with_warning.lua");
-
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
@@ -54,21 +55,23 @@ public class LspClientIntegrationTests
             CheckAnnotateType = true,
         };
 
+        // Act
         await _client.EnsureInitializedAsync(fixturesDir, config);
         await _client.OpenFileAsync(testFile);
         var diagnostics = await _client.GetDiagnosticsAsync(testFile);
 
-        Assert.That(diagnostics, Is.Not.Empty);
-        Assert.That(diagnostics[0].Message, Does.Contain("Frame").IgnoreCase);
-        Assert.That(diagnostics[0].Severity, Is.EqualTo(DiagnosticSeverity.Information));
+        // Assert
+        diagnostics.ShouldNotBeEmpty();
+        diagnostics[0].Message.ShouldContain("Frame", Case.Insensitive);
+        diagnostics[0].Severity.ShouldBe(DiagnosticSeverity.Information);
     }
 
     [Test]
     public async Task CheckFile_Clean_ReturnsNoDiagnostics()
     {
+        // Arrange
         var fixturesDir = Path.Combine(AppContext.BaseDirectory, "Fixtures");
         var testFile = Path.Combine(fixturesDir, "test_clean.lua");
-
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
@@ -77,20 +80,22 @@ public class LspClientIntegrationTests
             CheckSyntax = true,
         };
 
+        // Act
         await _client.EnsureInitializedAsync(fixturesDir, config);
         await _client.OpenFileAsync(testFile);
         var diagnostics = await _client.GetDiagnosticsAsync(testFile);
 
-        Assert.That(diagnostics, Is.Empty);
+        // Assert
+        diagnostics.ShouldBeEmpty();
     }
 
     [Test]
     public async Task CheckMultipleFiles_AllDiagnosticsReturned()
     {
+        // Arrange
         var fixturesDir = Path.Combine(AppContext.BaseDirectory, "Fixtures");
         var warningFile = Path.Combine(fixturesDir, "test_with_warning.lua");
         var cleanFile = Path.Combine(fixturesDir, "test_clean.lua");
-
         var config = new LuaHelperConfig
         {
             ProjectPath = fixturesDir,
@@ -100,33 +105,37 @@ public class LspClientIntegrationTests
             CheckAnnotateType = true,
         };
 
+        // Act
         await _client.EnsureInitializedAsync(fixturesDir, config);
         await _client.OpenFileAsync(warningFile);
         await _client.OpenFileAsync(cleanFile);
-
         var warningDiags = await _client.GetDiagnosticsAsync(warningFile);
         var cleanDiags = await _client.GetDiagnosticsAsync(cleanFile);
 
-        Assert.That(warningDiags, Is.Not.Empty);
-        Assert.That(warningDiags[0].Message, Does.Contain("Frame").IgnoreCase);
-        Assert.That(warningDiags[0].Severity, Is.EqualTo(DiagnosticSeverity.Information));
-        Assert.That(cleanDiags, Is.Empty);
+        // Assert
+        warningDiags.ShouldNotBeEmpty();
+        warningDiags[0].Message.ShouldContain("Frame", Case.Insensitive);
+        warningDiags[0].Severity.ShouldBe(DiagnosticSeverity.Information);
+        cleanDiags.ShouldBeEmpty();
     }
 
     [Test]
     public async Task LuahelperJson_IgnoredModules_ProduceNoDiagnostics()
     {
+        // Arrange
         var projectDir = CreateTempProject(ignoreModules: true);
         try
         {
             var config = await GetConfigForProject(projectDir);
             var luaFile = Path.Combine(projectDir, "Main.lua");
 
+            // Act
             await _client.EnsureInitializedAsync(projectDir, config);
             await _client.OpenFileAsync(luaFile);
             var diagnostics = await _client.GetDiagnosticsAsync(luaFile);
 
-            Assert.That(diagnostics, Is.Empty);
+            // Assert
+            diagnostics.ShouldBeEmpty();
         }
         finally
         {
@@ -137,22 +146,23 @@ public class LspClientIntegrationTests
     [Test]
     public async Task LuahelperJson_MissingIgnoreModules_FlagsUndefinedGlobal()
     {
+        // Arrange
         var projectDir = CreateTempProject(ignoreModules: false);
         try
         {
             var config = await GetConfigForProject(projectDir);
             var luaFile = Path.Combine(projectDir, "Main.lua");
 
+            // Act
             await _client.EnsureInitializedAsync(projectDir, config);
             await _client.OpenFileAsync(luaFile);
             var diagnostics = await _client.GetDiagnosticsAsync(luaFile);
 
-            Assert.That(diagnostics, Is.Not.Empty);
-            Assert.That(
-                diagnostics.Any(d => d.Message.Contains("C_Container")),
-                Is.True,
-                "Expected an undefined-variable diagnostic for C_Container"
-            );
+            // Assert
+            diagnostics.ShouldNotBeEmpty();
+            diagnostics
+                .Any(d => d.Message.Contains("C_Container"))
+                .ShouldBeTrue("Expected an undefined-variable diagnostic for C_Container");
         }
         finally
         {

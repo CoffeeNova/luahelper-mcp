@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using LuaHelperMcpServer.Models;
 using Microsoft.Extensions.Logging;
 
@@ -27,11 +28,6 @@ public sealed class LspClient : ILspClient, IDisposable
         string,
         TaskCompletionSource<List<LuaDiagnostic>>
     > _pendingDiagnostics = new();
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
 
     public LspState State => _state;
 
@@ -97,21 +93,18 @@ public sealed class LspClient : ILspClient, IDisposable
         await WaitForInitializeResponseAsync(initTcs, ct);
     }
 
-    private Dictionary<string, object?> BuildInitializeParams(
-        string projectPath,
-        LuaHelperConfig config
-    )
+    private JsonObject BuildInitializeParams(string projectPath, LuaHelperConfig config)
     {
-        return new Dictionary<string, object?>
+        return new JsonObject
         {
             ["processId"] = Environment.ProcessId,
             ["rootUri"] = PathToUri(projectPath),
             ["rootPath"] = projectPath,
-            ["capabilities"] = new Dictionary<string, object>
+            ["capabilities"] = new JsonObject
             {
-                ["textDocument"] = new Dictionary<string, object>
+                ["textDocument"] = new JsonObject
                 {
-                    ["synchronization"] = new Dictionary<string, bool>
+                    ["synchronization"] = new JsonObject
                     {
                         ["didOpen"] = true,
                         ["didChange"] = true,
@@ -122,13 +115,13 @@ public sealed class LspClient : ILspClient, IDisposable
         };
     }
 
-    private static Dictionary<string, object?> BuildInitializationOptions(LuaHelperConfig config)
+    private static JsonObject BuildInitializationOptions(LuaHelperConfig config)
     {
-        return new Dictionary<string, object?>
+        return new JsonObject
         {
             ["client"] = config.Client,
             ["PluginPath"] = config.PluginPath,
-            ["FileAssociationsConfig"] = new Dictionary<string, object>(),
+            ["FileAssociationsConfig"] = new JsonObject(),
             ["AllEnable"] = config.AllEnable,
             ["CheckSyntax"] = config.CheckSyntax,
             ["CheckNoDefine"] = config.CheckNoDefine,
@@ -151,9 +144,15 @@ public sealed class LspClient : ILspClient, IDisposable
             ["CheckDuplicateIf"] = config.CheckDuplicateIf,
             ["CheckSelfAssign"] = config.CheckSelfAssign,
             ["CheckFloatEq"] = config.CheckFloatEq,
-            ["IgnoreModules"] = config.IgnoreModules,
-            ["IgnoreFileOrDir"] = config.IgnoreFileOrDir,
-            ["IgnoreFileOrDirError"] = config.IgnoreFileOrDirError,
+            ["IgnoreModules"] = new JsonArray(
+                config.IgnoreModules.Select(m => (JsonNode?)m).ToArray()
+            ),
+            ["IgnoreFileOrDir"] = new JsonArray(
+                config.IgnoreFileOrDir.Select(m => (JsonNode?)m).ToArray()
+            ),
+            ["IgnoreFileOrDirError"] = new JsonArray(
+                config.IgnoreFileOrDirError.Select(m => (JsonNode?)m).ToArray()
+            ),
             ["RequirePathSeparator"] = config.RequirePathSeparator,
             ["EnableReport"] = config.EnableReport,
         };
@@ -183,7 +182,7 @@ public sealed class LspClient : ILspClient, IDisposable
 
     private async Task SendInitializedNotificationAsync(CancellationToken ct)
     {
-        await _writer!.SendNotificationAsync("initialized", new Dictionary<string, object>(), ct);
+        await _writer!.SendNotificationAsync("initialized", new JsonObject(), ct);
     }
 
     public async Task OpenFileAsync(string filePath, CancellationToken ct = default)
@@ -199,9 +198,9 @@ public sealed class LspClient : ILspClient, IDisposable
 
         _state = LspState.OpeningFiles;
 
-        var didOpenParams = new Dictionary<string, object>
+        var didOpenParams = new JsonObject
         {
-            ["textDocument"] = new Dictionary<string, object>
+            ["textDocument"] = new JsonObject
             {
                 ["uri"] = uri,
                 ["languageId"] = "lua",

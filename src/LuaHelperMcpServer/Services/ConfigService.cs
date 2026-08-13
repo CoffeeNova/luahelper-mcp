@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using LuaHelperMcpServer.Extensions;
 using LuaHelperMcpServer.Models;
+using LuaHelperMcpServer.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -11,11 +12,6 @@ public sealed class ConfigService : IConfigService
 {
     private const string DefaultVersion = "v0.2.29";
     private const string LuahelperJsonFileName = "luahelper.json";
-
-    private static readonly JsonSerializerOptions LuahelperJsonOptions = new()
-    {
-        WriteIndented = true,
-    };
 
     private readonly IOptions<LuaHelperOptions> _options;
     private readonly IFileReader _fileReader;
@@ -83,54 +79,9 @@ public sealed class ConfigService : IConfigService
         CancellationToken ct = default
     )
     {
-        var config = new
-        {
-            BaseDir = "./",
-            ShowWarnFlag = 1,
-            ReferMatchPathFlag = 0,
-            IgnoreFileNameVarFlag = 0,
-            ProjectFiles = new string[] { },
-            IgnoreModules = new[]
-            {
-                "C_Container",
-                "C_UnitAuras",
-                "C_Timer",
-                "C_AddOns",
-                "CreateFrame",
-                "GetTime",
-                "print",
-                "pairs",
-                "ipairs",
-                "tinsert",
-                "tremove",
-                "table",
-                "string",
-                "math",
-                "tostring",
-                "tonumber",
-                "type",
-                "error",
-                "assert",
-                "select",
-                "unpack",
-                "next",
-                "rawget",
-                "rawset",
-                "setmetatable",
-                "getmetatable",
-            },
-            IgnoreFileVars = new string[] { },
-            IgnoreReadFiles = new string[] { },
-            IgnoreErrorTypes = new string[] { },
-            IgnoreFileOrFloder = new[] { ".vscode/", "Tests/" },
-            IgnoreFileErr = new string[] { },
-            IgnoreFileErrTypes = new string[] { },
-            ProtocolVars = new string[] { },
-            ReferFrameFiles = new string[] { },
-            PathSeparator = ".",
-        };
+        var config = new LuahelperJsonTemplate();
 
-        var json = JsonSerializer.Serialize(config, LuahelperJsonOptions);
+        var json = JsonSerializer.Serialize(config, LspJson.Indented.LuahelperJsonTemplate);
         var filePath = Path.Combine(projectPath, LuahelperJsonFileName);
         await File.WriteAllTextAsync(filePath, json, ct);
         return $"Created luahelper.json at {filePath}";

@@ -49,6 +49,15 @@ elseif (-not [System.IO.Path]::IsPathRooted($OutputDir)) {
 }
 
 $exeName = if ($Rid -like "win*") { "lualsp.exe" } else { "lualsp" }
+# Candidate file names for this Rid inside the LuaHelper extension. The
+# extension names its binaries per platform (lualsp.exe, linuxlualsp,
+# maclualsp); older layouts used a plain lualsp/lualsp.exe name.
+$ridBinaryNames = switch ($Rid) {
+    "win-x64"  { @("lualsp.exe") }
+    "linux-x64" { @("linuxlualsp", "lualsp") }
+    "osx-x64"  { @("maclualsp", "lualsp") }
+    default    { @($exeName) }
+}
 $bundleDir = Join-Path $OutputDir $Rid
 $bundleExe = Join-Path $bundleDir $exeName
 $manifestPath = Join-Path $OutputDir "version.json"
@@ -76,6 +85,16 @@ function Compare-LuaHelperVersions {
     return $null -ne $lv
 }
 
+function Find-RidBinary {
+    param([string]$Root)
+    foreach ($name in $ridBinaryNames) {
+        $hit = Get-ChildItem -LiteralPath $Root -Recurse -File -Filter $name `
+            -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($hit) { return $hit }
+    }
+    return $null
+}
+
 function Get-LuaHelperExtensionInfo {
     param([string]$Folder)
     $version = $null
@@ -94,8 +113,7 @@ function Get-LuaHelperExtensionInfo {
         $dash = $leaf.LastIndexOf("-")
         if ($dash -ge 0) { $version = $leaf.Substring($dash + 1) }
     }
-    $binary = Get-ChildItem -LiteralPath $Folder -Recurse -Filter $exeName -ErrorAction SilentlyContinue |
-        Select-Object -First 1
+    $binary = Find-RidBinary $Folder
     return [pscustomobject]@{
         Path      = $Folder
         Version   = $version
@@ -144,8 +162,7 @@ function Copy-FromVsix {
         }
         catch { $version = $null }
     }
-    $binary = Get-ChildItem -LiteralPath (Join-Path $ExtractDir "extension") -Recurse -Filter $exeName `
-        -ErrorAction SilentlyContinue | Select-Object -First 1
+    $binary = Find-RidBinary (Join-Path $ExtractDir "extension")
     if (-not $binary) {
         throw "lualsp binary not found in the downloaded VSIX."
     }
@@ -336,6 +353,9 @@ try {
     # --- 6. Form the bundle ---
     New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
     Copy-Item -LiteralPath $binaryPath -Destination $bundleExe -Force
+    if ($env:OS -ne "Windows_NT") {
+        & chmod +x $bundleExe 2>$null
+    }
     $sha = (Get-FileHash -LiteralPath $bundleExe -Algorithm SHA256).Hash.ToLowerInvariant()
     if (-not $chosenVersion) { $chosenVersion = $bundleVersion }
     Write-Manifest -Version $chosenVersion -Source $sourceDesc -Sha256 $sha

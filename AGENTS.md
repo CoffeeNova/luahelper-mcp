@@ -27,7 +27,7 @@ Everything an agent needs — project context, architecture, skills, agents, pro
 | `mcp-sdk-csharp` | Adding/modifying MCP tools: `[McpServerTool]` attributes, DI registration, stdio transport, tool parameter descriptions |
 | `lualsp-exe` | Working with lualsp.exe: -mode=1 vs -mode=0, PluginPath, all 22 check flags, IgnoreFileOrDir, RequirePathSeparator |
 | `dotnet-project` | Scaffolding .NET projects: solution files, console projects, test projects (NUnit), package references, InternalsVisibleTo |
-| `nunit-testing` | Writing/running NUnit tests: Assert.That syntax, SetUp/TearDown, mocking with Moq, test project separation (Unit vs Integration) |
+| `nunit-testing` | Writing/running NUnit tests: Shouldly assertions, mocking with NSubstitute + AutoFixture, test project separation (Unit vs Integration) |
 | `process-lifecycle` | Managing external processes in .NET: ProcessStartInfo, stdin/stdout redirect, crash detection, restart with exponential backoff |
 | `csharpier-formatting` | Code formatting with CSharpier: installation, CLI usage, CI integration |
 | `phase-workflow` | End-to-end phase/feature workflow (contract-first, todo, implement, verify, document, hand back) |
@@ -60,7 +60,7 @@ Everything an agent needs — project context, architecture, skills, agents, pro
 
 - Run: `dotnet test src/LuaHelperMcpServer.Tests.Unit`
 - 20+ tests covering all non-UI services
-- No filesystem access, no real processes — uses Moq + FakeLspServer
+- No filesystem access, no real processes — uses NSubstitute + AutoFixture + FakeLspServer
 - **Before writing or running tests, read the `nunit-testing` skill**
 
 ## Integration tests (`src/LuaHelperMcpServer.Tests.Integration/`)

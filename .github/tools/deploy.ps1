@@ -41,7 +41,8 @@ if ($LASTEXITCODE -ne 0) {
 # Copy lualsp.exe if available
 if (Test-Path $lualspDir) {
     Write-Host "Copying lualsp binaries from $lualspDir..." -ForegroundColor Cyan
-    Copy-Item "$lualspDir/*" "$publishDir/lualsp/" -Recurse -Force
+    New-Item -ItemType Directory -Path "$publishDir/lualsp/$Runtime" -Force | Out-Null
+    Copy-Item "$lualspDir/*" "$publishDir/lualsp/$Runtime/" -Recurse -Force
 }
 else {
     Write-Host "Warning: lualsp binaries not found at $lualspDir. Skipping." -ForegroundColor Yellow

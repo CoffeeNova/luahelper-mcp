@@ -1,5 +1,7 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using LuaHelperMcpServer.Serialization;
 
 namespace LuaHelperMcpServer.Services;
 
@@ -7,12 +9,6 @@ public sealed class LspMessageWriter
 {
     private readonly Stream _stream;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
-
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-    };
 
     public LspMessageWriter(Stream stream)
     {
@@ -22,11 +18,11 @@ public sealed class LspMessageWriter
     public async Task SendRequestAsync(
         int id,
         string method,
-        object? parameters,
+        JsonNode? parameters,
         CancellationToken ct = default
     )
     {
-        var bodyObj = new Dictionary<string, object?>
+        var bodyObj = new JsonObject
         {
             ["jsonrpc"] = "2.0",
             ["id"] = id,
@@ -39,11 +35,11 @@ public sealed class LspMessageWriter
 
     public async Task SendNotificationAsync(
         string method,
-        object? parameters,
+        JsonNode? parameters,
         CancellationToken ct = default
     )
     {
-        var bodyObj = new Dictionary<string, object?>
+        var bodyObj = new JsonObject
         {
             ["jsonrpc"] = "2.0",
             ["method"] = method,
@@ -53,9 +49,18 @@ public sealed class LspMessageWriter
         await SendAsync(bodyObj, ct);
     }
 
-    private async Task SendAsync(object bodyObj, CancellationToken ct)
+    private async Task SendAsync(JsonObject bodyObj, CancellationToken ct)
     {
-        var body = JsonSerializer.SerializeToUtf8Bytes(bodyObj, JsonOptions);
+        byte[] body;
+        using (var stream = new MemoryStream())
+        {
+            using (var jsonWriter = new Utf8JsonWriter(stream))
+            {
+                bodyObj.WriteTo(jsonWriter);
+            }
+            body = stream.ToArray();
+        }
+
         var header = Encoding.ASCII.GetBytes($"Content-Length: {body.Length}\r\n\r\n");
 
         await _writeLock.WaitAsync(ct);

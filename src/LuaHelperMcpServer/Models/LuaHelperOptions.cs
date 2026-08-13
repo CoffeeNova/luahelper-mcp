@@ -2,7 +2,7 @@ namespace LuaHelperMcpServer.Models;
 
 public sealed class LuaHelperOptions
 {
-    public string LualspPath { get; set; } = "lualsp/win-x64/lualsp.exe";
+    public string LualspPath { get; set; } = string.Empty;
     public TimeSpan DefaultTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan DiagnosticTimeout { get; set; } = TimeSpan.FromSeconds(10);
     public int MaxRestarts { get; set; } = 3;

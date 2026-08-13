@@ -131,6 +131,7 @@ graph LR
 | `Program.cs` | DI container setup, host configuration, stdio transport registration | MCP SDK, all services |
 | `LuaDiagnosticTools` | MCP tool definitions (`check_lua_file`, `check_lua_project`, `get_supported_checks`, `get_luahelper_version`) | `ILspClient`, `IDiagnosticCache`, `IConfigService` |
 | `ConfigTools` | MCP tools for config management (`get_luahelper_config`, `create_luahelper_json`) | `IConfigService` |
+| `VersionTools` | MCP tool `get_server_version` — reports the server version from `AssemblyInformationalVersion` (stamped by `-p:Version` at publish) | — |
 | `DiagnosticResources` | MCP resources (`luahelper://diagnostics/{+filePath}`, `luahelper://config`) | `ILspClient`, `IDiagnosticCache`, `IConfigService` |
 | `LuaHelperPrompts` | MCP prompts (`fix_lua_warnings`, `configure_luahelper`) | — |
 | `ILspClient` / `LspClient` | LSP protocol implementation: initialize, didOpen, receive diagnostics | `IProcessManager`, `LspMessageReader`, `LspMessageWriter` |
@@ -1200,17 +1201,18 @@ LuaHelperMcpServer.Tests/
 
 **Deliverable:** `.vsix` file that installs the MCP server + lualsp.exe and auto-registers with VS Code.
 
-### Phase 5: NativeAOT + Distribution
+### Phase 5: NativeAOT + Distribution ✅ CODE + WORKFLOWS COMPLETE (first release pending)
 
 **Goal:** Single-file AOT binary, CI/CD, release.
 
 | Task | DoD |
 |---|---|
-| Enable NativeAOT compilation | `dotnet publish -r win-x64 -p:PublishAot=true` produces single `.exe` |
-| Test AOT binary with MCP clients | Works with VS Code Copilot and Claude Desktop |
-| Set up GitHub Actions CI | Build + test on push, publish on release |
-| Create release pipeline | AOT binaries for win-x64, linux-x64, osx-x64 |
-| Write user documentation | README with quickstart, config reference, troubleshooting |
+| Enable NativeAOT compilation | `dotnet publish -r win-x64 -p:PublishAot=true` produces single `.exe` (verified in CI — local machine lacks the MSVC linker) |
+| Test AOT binary with MCP clients | Automated handshake in CI (`smoke-test-mcp.ps1`, incl. `get_server_version` assertion) |
+| Set up GitHub Actions CI | `.github/workflows/ci.yml` — build + test on push, AOT publish + handshake |
+| Create release pipeline | `.github/workflows/release.yml` — semver CD: every `main` push bumps the patch version, tag pushes pin minor/major; AOT binaries for win-x64, linux-x64, osx-x64 + `.vsix` + GitHub release |
+| Versioning | Version derived in the `version` job (latest tag + patch bump / tag as-is), stamped into the AOT assembly, vsix manifest, and asset names; server reports it via `get_server_version` |
+| Write user documentation | Root `README.md` + `THIRD-PARTY-NOTICES.md` (BSD-3-Clause for lualsp) |
 
 **Deliverable:** GitHub release with platform-specific binaries + VS Code extension `.vsix`.
 

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using LuaHelperMcpServer.Models;
+using LuaHelperMcpServer.Serialization;
 using LuaHelperMcpServer.Services;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
@@ -10,12 +11,6 @@ namespace LuaHelperMcpServer.Resources;
 [McpServerResourceType]
 public sealed class DiagnosticResources
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private readonly ILspClient _lspClient;
     private readonly IDiagnosticCache _cache;
     private readonly IConfigService _configService;
@@ -46,14 +41,14 @@ public sealed class DiagnosticResources
         var uri = LspClient.PathToUri(filePath);
         var cached = _cache.GetDiagnostics(uri);
         if (cached != null)
-            return JsonSerializer.Serialize(cached, JsonOptions);
+            return JsonSerializer.Serialize(cached, LspJson.IndentedCamelCase.ListLuaDiagnostic);
 
         var config = await _configService.GetConfig(Path.GetDirectoryName(filePath)!, ct);
         await _lspClient.EnsureInitializedAsync(config.ProjectPath, config, ct);
         await _lspClient.OpenFileAsync(filePath, ct);
         var diagnostics = await _lspClient.GetDiagnosticsAsync(filePath, ct);
 
-        return JsonSerializer.Serialize(diagnostics, JsonOptions);
+        return JsonSerializer.Serialize(diagnostics, LspJson.IndentedCamelCase.ListLuaDiagnostic);
     }
 
     [McpServerResource(
@@ -68,6 +63,6 @@ public sealed class DiagnosticResources
         var config = string.IsNullOrEmpty(_lspClient.ProjectPath)
             ? new LuaHelperConfig()
             : await _configService.GetConfig(_lspClient.ProjectPath!, ct);
-        return JsonSerializer.Serialize(config, JsonOptions);
+        return JsonSerializer.Serialize(config, LspJson.IndentedCamelCase.LuaHelperConfig);
     }
 }

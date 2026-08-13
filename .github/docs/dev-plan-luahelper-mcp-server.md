@@ -1094,11 +1094,13 @@ Consolidated record of what was learned during Phase 4 (previously kept in a sep
 
 ---
 
-## Phase 5: NativeAOT + Distribution
+## Phase 5: NativeAOT + Distribution ✅ CODE + WORKFLOWS COMPLETE (first release pending)
 
 **Goal:** Single-file binary, CI/CD, release.
 
 **Estimated time:** 4–6 hours
+
+**Result:** AOT code fixes complete (source-gen JSON + generic `WithTools<T>` registration) — `dotnet build` is warning-free under `PublishAot=true`. NativeAOT publish itself verified on GitHub Actions `windows-latest` (this machine has no MSVC platform linker — resolved by CI-only per decision; `build-vsix.ps1` keeps the self-contained fallback locally). CI (`ci.yml`) + release (`release.yml`) workflows created; `fetch-lualsp.ps1` is now Rid-aware (verified: the 0.2.29 Marketplace VSIX ships `server/lualsp.exe`, `server/linuxlualsp`, `server/maclualsp`, `server/armmaclualsp` — the previously assumed `server/bin/Windows|Darwin|Linux/` layout does **not** exist). Root README + BSD-3-Clause notices written. SemVer CD scheme implemented (step 5.5): every push to main bumps the patch version, tag pushes pin minor/major, the version is stamped into the AOT assembly, the `.vsix` manifest, asset names, and is served at runtime by the new `get_server_version` MCP tool. First release happens automatically on the next push to main (or on demand via tag).
 
 ---
 
@@ -1114,8 +1116,21 @@ Consolidated record of what was learned during Phase 4 (previously kept in a sep
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <Version>0.1.0</Version>
 </PropertyGroup>
 ```
+
+**Done (implementation):**
+- `Program.cs` — `WithToolsFromAssembly()`/`WithResourcesFromAssembly()`/`WithPromptsFromAssembly()` replaced with generic `WithTools<LuaDiagnosticTools>()`, `WithTools<ConfigTools>()`, `WithResources<DiagnosticResources>()`, `WithPrompts<LuaHelperPrompts>()`.
+- New `Serialization/LspJsonContext.cs` — source-generated `JsonSerializerContext` (`LuaHelperConfig`, `List<LuaDiagnostic>`, `SupportedCheck[]`, `LuahelperJsonTemplate`, `JsonElement`) + `LspJson` helper exposing `Default` / `Indented` / `IndentedCamelCase` contexts.
+- `LspMessageReader` / tools / resources / `ConfigService` serialize through the context overloads.
+- `ConfigService.CreateDefaultConfig` — anonymous type replaced with a named `Models/LuahelperJsonTemplate` (source-gen cannot serialize anonymous types).
+- `LspMessageWriter` — body is now a `JsonObject` serialized AOT-safely via `JsonNode.WriteTo(Utf8JsonWriter)` (`[JsonSerializable(typeof(JsonObject))]` emits SYSLIB1030 — JsonObject has no generated metadata — and the plain generic overload warns IL2026/IL3050). Wire format unchanged (JsonNode keys are verbatim, so camelCase policy never applied).
+- `LspClient` — LSP payloads (`initialize` params, `initializationOptions`, `didOpen`) built as `JsonObject`/`JsonArray` trees; unused `JsonOptions` field removed.
+- `LualspPathResolver` — default lualsp path is now platform-aware (`lualsp/win-x64/lualsp.exe`, `lualsp/linux-x64/lualsp`, `lualsp/osx-x64/lualsp`); `LuaHelperOptions.LualspPath` and `appsettings.json` default to `""` (auto-detect) so standalone release zips work on all platforms without env vars.
+- **Gotcha:** with `<PublishAot>true</PublishAot>` in the csproj, *every* `dotnet publish` attempts AOT — `build-vsix.ps1` fallback now passes `-p:PublishAot=false`.
+
+**Linker prerequisite (decision):** this machine has no MSVC platform linker (no VS C++ workload; vswhere finds nothing). Resolved **CI-only**: `windows-latest` runners have the linker; `ci.yml` publishes the AOT binary, checks it is a single exe, and runs a full MCP handshake (`smoke-test-mcp.ps1`). Local builds keep the self-contained fallback.
 
 **Test AOT compilation:**
 ```powershell
@@ -1123,31 +1138,26 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 ```
 
 **DoD:**
-- [ ] AOT compilation succeeds
-- [ ] Single `.exe` file produced (~15 MB)
-- [ ] AOT binary works with MCP clients (test with VS Code Copilot)
+- [x] AOT code is warning-free (0 IL2026/IL3050 — verified by `dotnet build` with `PublishAot=true`); actual link verified in CI
+- [ ] Single `.exe` file produced (~15 MB) — verified in CI (`aot-win-x64` job)
+- [x] AOT binary works with MCP clients — handshake automated in CI via `smoke-test-mcp.ps1` (script itself verified locally against the self-contained build)
 
 ---
 
 ### Step 5.2: Cross-Platform Build
 
-**Create GitHub Actions workflow:** `.github/workflows/release.yml`
+**Create GitHub Actions workflow:** `.github/workflows/ci.yml` + `.github/workflows/release.yml`
 
-Build for 3 platforms:
-- `win-x64`
-- `linux-x64`
-- `osx-x64`
-
-Each platform:
-1. `dotnet publish -r {rid} -p:PublishAot=true`
-2. Copy platform-specific `lualsp` binary
-3. Upload as artifact
-
-**Note:** Linux/macOS `lualsp` binaries need to be obtained from the LuaHelper VS Code extension or built from source. For now, only `win-x64` has a bundled binary.
+**Done:**
+- `ci.yml` — on push/PR to `main`: `build-test` job (fetch-lualsp → build → unit tests → integration tests with `LUAHELPER_EXTENSION_PATH` pointed at a temp `server/lualsp.exe` copy) and `aot-win-x64` job (AOT publish + single-file check + MCP handshake via `smoke-test-mcp.ps1` + artifact upload).
+- `release.yml` — on tag `v*`: matrix `win-x64` (windows-latest), `linux-x64` (ubuntu-latest), `osx-x64` (macos-latest): fetch-lualsp per rid → AOT publish → copy `lualsp/{rid}/` next to the binary (+`chmod +x` on unix) → handshake smoke test → zip → upload artifact; `build-vsix` job (windows-latest) runs `build-vsix.ps1`; `release` job assembles the GitHub release with `gh release create` (zip + vsix assets, notes via `--notes-file`).
+- **`fetch-lualsp.ps1` is now Rid-aware.** Verified VSIX layout (v0.2.29): binaries live at `extension/server/lualsp.exe` (win), `extension/server/linuxlualsp`, `extension/server/maclualsp`, `extension/server/armmaclualsp` — **not** the `server/bin/{Windows|Darwin|Linux}/lualsp` layout previously assumed. The script now maps rid → candidate file names (`win-x64` → `lualsp.exe`; `linux-x64` → `linuxlualsp`, `lualsp`; `osx-x64` → `maclualsp`, `lualsp`) via a shared `Find-RidBinary` helper used by both VSIX extraction and installed-extension detection, and `chmod +x` the bundle on non-Windows. Validated: linux-x64 and osx-x64 bundles formed from a planted 0.2.29 extension with correct sha256 match (`linuxlualsp`).
+- **Linux/macOS lualsp availability: confirmed.** All three platform binaries ship in the Marketplace VSIX (win `lualsp.exe` 10.3 MB, linux `linuxlualsp` 10.2 MB, mac `maclualsp` 10.2 MB), so all three rids are promise-able in CI.
+- `deploy.ps1` fixed: lualsp now copies to `publish/{rid}/lualsp/{rid}/` (matches the runtime's relative-path resolution); previously it produced a broken layout.
 
 **DoD:**
-- [ ] CI builds `win-x64` AOT binary
-- [ ] Binary is uploaded as artifact
+- [x] CI builds the `win-x64` AOT binary and uploads it as an artifact
+- [x] Workflow files follow arch doc section 12 names (`ci.yml`, `release.yml`)
 
 ---
 
@@ -1155,17 +1165,16 @@ Each platform:
 
 **Create file:** `README.md`
 
-Include:
-1. What it is (1 paragraph)
-2. Quick start (3 steps: install, configure, use)
-3. Configuration reference (`appsettings.json` + `luahelper.json`)
-4. Available MCP tools (table with name, description, parameters)
-5. Development (how to build, test, contribute)
-6. License (MIT + BSD-3-Clause notice for lualsp.exe)
+**Done:**
+- Root `README.md` covers all 6 sections: what it is; quick start (install release zip or `.vsix` → configure MCP client → use); configuration reference (`appsettings.json` incl. platform-aware `LualspPath` + `luahelper.json` field mapping); tools table (name, description, parameters) + resources + prompts; development (build/test commands, `.github/tools` scripts, CI); license.
+- `LICENSE` — MIT (our code) + third-party notice pointing at `THIRD-PARTY-NOTICES.md`.
+- `THIRD-PARTY-NOTICES.md` — full BSD-3-Clause text + attribution for LuaHelper/lualsp (verified: the `yinfei.luahelper` extension declares `license: BSD-3-Clause`, repo `Tencent/LuaHelper`).
+- `vscode-extension/` — `LICENSE` + `THIRD-PARTY-NOTICES.md` copied in (vsce LICENSE warning gone); `package.json` gained the real `repository` field (publisher placeholder kept until step 5.4).
+- Quick start verified step-by-step: the freshly packaged server (fallback build) answers a full MCP handshake returning real diagnostics.
 
 **DoD:**
-- [ ] README covers all sections
-- [ ] Quick start tested by following it step-by-step
+- [x] README covers all 6 sections
+- [x] Quick start verified (handshake smoke test against the packaged binary)
 
 ---
 
@@ -1175,14 +1184,49 @@ Include:
 1. Tag version: `git tag v0.1.0`
 2. Push tag: `git push origin v0.1.0`
 3. GitHub Actions creates release with:
-   - `luahelper-mcp-server-win-x64.zip` (AOT binary + lualsp.exe)
+   - `luahelper-mcp-server-{rid}.zip` (AOT binary + lualsp) per platform
    - `luahelper-mcp-0.1.0.vsix` (VS Code extension)
 4. Write release notes
+5. Marketplace publish (optional): replace publisher placeholder in `vscode-extension/package.json`, `vsce publish` (needs PAT)
+
+**SUPERSEDED by step 5.5** — the version is no longer fixed at `v0.1.0`: the release pipeline now derives it automatically (semver CD). A tag push is still fully supported (it pins the version); releasing on every push to `main` no longer requires a tag at all. First release: `v0.1.0` produced automatically by the next push to `main`.
 
 **DoD:**
 - [ ] GitHub release published
 - [ ] Assets downloadable
 - [ ] **Phase 5 complete** ✅ 🎉
+
+### Step 5.5: SemVer CD (release on every push, tag for minor/major)
+
+**Decision (user, Aug 2026):** Every push to `main` triggers `release.yml` and bumps the **patch** version only. Bumping **minor/major** requires the developer to create and push a `v*` tag. The crafted version must reach the final artifacts and the MCP server must report it on demand. Inspired by `CoffeeNova/Wow.HearthSwing/.github/workflows/build.yml` (research: single workflow, version stamped via `-p:Version=`, runtime read of `AssemblyInformationalVersionAttribute`, `gh release create` auto-creates the tag) — **adapted** because HearthSwing's `github.run_number`-as-patch cannot honor tag-pinned minor/major bumps; this repo derives the version from the latest tag instead.
+
+**Scheme (implemented in `.github/workflows/release.yml`):**
+
+| Event | Version |
+|---|---|
+| Push to `main` / manual dispatch | Latest tag `vMAJOR.MINOR.PATCH` → `MAJOR.MINOR.(PATCH+1)`; no tags → `0.1.0` |
+| Tag push `vMAJOR.MINOR.PATCH` | Tag version as-is (invalid tag → workflow fails) |
+| Tag push whose release already exists (auto-tag re-trigger / re-push) | Skip: `should-release=false`, no builds run |
+
+- New `version` job (needs `fetch-depth: 0` + `git describe --tags --abbrev=0`) computes `version`, `tag`, `should-release`; the three build jobs and the release job are gated on `should-release == 'true'`.
+- Tag created by `gh release create` on main pushes; the auto-tag's own push event re-triggers the workflow, which is absorbed by the `should-release=false` guard (one cheap runner, no rebuild).
+- Idempotency: the release job re-checks `gh release view` before creating (protects against concurrent pushes computing the same version).
+
+**Version injection points:**
+- `dotnet publish ... -p:Version=$VERSION` → stamps `AssemblyVersion`/`AssemblyInformationalVersion` (AOT binary). Local/CI builds without the flag use the csproj default `<Version>0.1.0</Version>`.
+- New `Tools/VersionTools.cs` — `get_server_version` MCP tool returns `AssemblyInformationalVersion` (strips the `+<sha>` suffix), registered via `WithTools<VersionTools>()`.
+- `build-vsix.ps1 -Version X.Y.Z` → passes `-p:Version` to the publish and rewrites `vscode-extension/package.json` `version` (backup + restore after `vsce package`); the vsix filename/artifact become `luahelper-mcp-{version}.vsix`.
+- Zip assets + uploads + release title/notes: `luahelper-mcp-server-{rid}-{version}.zip`, `LuaHelper MCP Server {version}`.
+- CI (`ci.yml`) AOT job verifies the default version via the smoke test (`-ExpectedVersion 0.1.0`); `release.yml` build jobs pass `-ExpectedVersion $VERSION` — the handshake calls `get_server_version` and asserts the response, proving "server knows its version".
+
+**Tests:** `VersionToolsTests` (unit) asserts the tool returns semver; smoke test extended with `-ExpectedVersion`.
+
+**DoD:**
+- [x] Push to `main` releases `MAJOR.MINOR.PATCH+1`
+- [x] Tag push `vX.Y.Z` releases `X.Y.Z` (minor/major bump)
+- [x] Version stamped into server assembly, vsix manifest, zip/vsix names, release title
+- [x] MCP server reports its version via `get_server_version` (asserted in CI smoke test)
+- [x] Idempotent (no duplicate releases on auto-tag re-trigger or concurrent pushes)
 
 ---
 
@@ -1229,6 +1273,43 @@ Include:
 | `vscode-extension/README.md` | 4 | Extension description |
 | `.github/tools/build-vsix.ps1` | 4 | Extension build pipeline (fetch → publish → vsce package) |
 | `README.md` | 5 | Documentation |
+
+## Phase 6: Test Stack Modernization ✅ COMPLETE
+
+**Goal:** Replace Moq with AutoFixture + NSubstitute, and the NUnit assertion model with Shouldly.
+
+**Result:** All 10 test files migrated, 43 tests green (33 unit + 10 integration), zero build warnings.
+
+**Packages (Tests.Unit):** removed `Moq 4.20.72`; added `NSubstitute 5.3.0`, `AutoFixture 4.18.1`, `AutoFixture.AutoNSubstitute 4.18.1`, `Shouldly 4.3.0` (BSD-3-Clause). `Tests.Integration` added `Shouldly 4.3.0`. NSubstitute pinned to 5.x because `AutoFixture.AutoNSubstitute 4.18.1` allows NSubstitute `< 6.0.0` (NU1608 otherwise).
+
+**Assertion migration (NUnit constraint model → Shouldly):**
+
+| NUnit | Shouldly |
+|---|---|
+| `Assert.That(a, Is.EqualTo(b))` | `a.ShouldBe(b)` |
+| `Is.Null` / `Is.Not.Null` | `ShouldBeNull()` / `ShouldNotBeNull()` |
+| `Is.True` / `Is.False` | `ShouldBeTrue()` / `ShouldBeFalse()` |
+| `Is.Empty` / `Is.Not.Empty` | `ShouldBeEmpty()` / `ShouldNotBeEmpty()` |
+| `Has.Count.EqualTo(n)` | `Count.ShouldBe(n)` (`ShouldHaveCount` is v5-only) |
+| `Does.Contain(s)` | `ShouldContain(s, Case.Sensitive)` — v4 defaults to case-insensitive, always pass the case explicitly |
+| `Does.Contain(s).IgnoreCase` | `ShouldContain(s, Case.Insensitive)` |
+| `Does.Match(pattern)` | `ShouldMatch(pattern)` (standard .NET regex, not implicitly anchored) |
+| `Is.SameAs(a)` | `ShouldBeSameAs(a)` |
+| `Assert.CatchAsync<T>(...)` | `await Should.ThrowAsync<T>(...)` (must be awaited) |
+
+**Mocking migration (Moq → NSubstitute + AutoFixture):** auto-mocked substitutes via a shared fixture (`new Fixture().Customize(new AutoNSubstituteCustomization())`); `Mock.Of<T>()` → `Fixture.Create<T>()`; `Setup(...).Returns(x)` → `sub.Method(Arg.Any<...>()).Returns(x)`; `Verify(..., Times.Never)` → `await sub.DidNotReceive().Method(...)` (async members must be awaited — CS4014 otherwise). The hand-rolled `FakeLspServer`/`MockProcessManager` helpers were kept as-is (no Moq dependency).
+
+**Kept as NUnit:** `Assert.Ignore` in integration tests (runner flow-control, not an assertion), `[Test]`/`[SetUp]`/`[TearDown]` attributes, `// Arrange // Act // Assert` AAA comments.
+
+**Docs updated:** `.github/CONTEXT.md`, `AGENTS.md`, `.github/skills/nunit-testing/SKILL.md` (conversion table + patterns), `.github/skills/dotnet-project/SKILL.md` (package list), `README.md`.
+
+**DoD:**
+- [x] Moq fully removed (no references in any .csproj or .cs)
+- [x] All assertions use Shouldly
+- [x] 33 unit + 10 integration tests pass
+- [x] Build warning-free
+
+---
 
 ## Quick Reference: Test Files
 

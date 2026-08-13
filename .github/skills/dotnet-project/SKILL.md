@@ -44,7 +44,10 @@ dotnet add src\ProjectName.Tests\ProjectName.Tests.csproj reference src\ProjectN
 <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
 <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
 <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
-<PackageReference Include="Moq" Version="4.20.72" />
+<PackageReference Include="NSubstitute" Version="5.3.0" />
+<PackageReference Include="AutoFixture" Version="4.18.1" />
+<PackageReference Include="AutoFixture.AutoNSubstitute" Version="4.18.1" />
+<PackageReference Include="Shouldly" Version="4.3.0" />
 <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
 ```
 
@@ -54,6 +57,7 @@ dotnet add src\ProjectName.Tests\ProjectName.Tests.csproj reference src\ProjectN
 <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
 <PackageReference Include="NUnit.Analyzers" Version="4.7.0" />
 <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0" />
+<PackageReference Include="Shouldly" Version="4.3.0" />
 <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.11" />
 ```
 

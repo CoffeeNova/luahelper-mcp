@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using LuaHelperMcpServer.Models;
+using LuaHelperMcpServer.Serialization;
 using LuaHelperMcpServer.Services;
 using ModelContextProtocol.Server;
 
@@ -10,12 +11,6 @@ namespace LuaHelperMcpServer.Tools;
 [McpServerToolType]
 public sealed class LuaDiagnosticTools
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
-
     private static readonly SupportedCheck[] SupportedChecks =
     [
         new()
@@ -224,7 +219,9 @@ public sealed class LuaDiagnosticTools
     )]
     public Task<string> GetSupportedChecks(CancellationToken ct)
     {
-        return Task.FromResult(JsonSerializer.Serialize(SupportedChecks, JsonOptions));
+        return Task.FromResult(
+            JsonSerializer.Serialize(SupportedChecks, LspJson.IndentedCamelCase.SupportedCheckArray)
+        );
     }
 
     [McpServerTool(Name = "get_luahelper_version")]

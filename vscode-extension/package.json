@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "your-publisher-id",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CoffeeNova/luahelper-mcp.git"
+  },
   "engines": {
     "vscode": "^1.99.0"
   },
