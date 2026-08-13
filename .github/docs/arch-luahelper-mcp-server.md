@@ -1181,12 +1181,16 @@ LuaHelperMcpServer.Tests/
 
 **Deliverable:** A WoW addon project with `luahelper.json` produces zero false positives.
 
-### Phase 4: VS Code Extension
+### Phase 4: lualsp Provisioning + VS Code Extension ✅ COMPLETE
 
-**Goal:** One-click install from VS Code Marketplace.
+**Goal:** No dependency on a pre-installed LuaHelper extension. Provision lualsp (detect → download → update → bundle) and wrap the MCP server in a VS Code extension for one-click install from the Marketplace.
+
+**Result:** `.github/tools/fetch-lualsp.ps1` provisions `lualsp/{rid}/` + `version.json` (Marketplace VSIX download with `code-cli` fallback, verified on a machine with no extension installed); `.github/tools/build-vsix.ps1` packages `vscode-extension/luahelper-mcp-0.1.0.vsix` (NativeAOT publish with self-contained fallback — this machine lacks the MSVC platform linker); the extension installs and the bundled server passes a full MCP handshake with real diagnostics.
 
 | Task | DoD |
 |---|---|
+| Create `.github/tools/fetch-lualsp.ps1` provisioning script | Detects installed lualsp versions, downloads when missing, offers updates, forms the bundle |
+| Form `lualsp/{rid}/` bundle + `version.json` manifest | Bundle is reproducible by the script; `ProcessManager` can launch it |
 | Create `vscode-extension/` folder with `package.json` | Extension manifest valid |
 | Add `contributes.mcpServers` declaration | VS Code auto-starts the MCP server |
 | Bundle compiled MCP server binary | Binary included in `.vsix` |
@@ -1220,6 +1224,11 @@ luahelper-mcp/
 │   ├── docs/
 │   │   ├── research-luahelper-mcp-server.md   # Research document
 │   │   └── arch-luahelper-mcp-server.md       # This file
+│   ├── tools/
+│   │   ├── build.ps1                          # Build solution
+│   │   ├── test.ps1                           # Run tests
+│   │   ├── deploy.ps1                         # AOT publish + copy lualsp
+│   │   └── fetch-lualsp.ps1                   # Detect/download/update/bundle lualsp
 │   └── workflows/
 │       ├── ci.yml                              # Build + test
 │       └── release.yml                         # AOT publish + release
@@ -1302,6 +1311,7 @@ luahelper-mcp/
 - BSD-3-Clause license allows redistribution with attribution
 - Downloading adds complexity (URL management, checksums, network errors)
 - **Decision:** Bundle in `lualsp/{rid}/` folder, include LICENSE notice
+- **Follow-up (Phase 4):** the bundle is produced by `.github/tools/fetch-lualsp.ps1`, which copies lualsp from an installed `yinfei.luahelper` extension or downloads the Marketplace VSIX when the extension is absent — the machine never requires the extension to be pre-installed.
 
 ### Q2: All 22 check types or subset?
 

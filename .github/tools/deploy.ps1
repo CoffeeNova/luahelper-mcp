@@ -21,7 +21,7 @@ param(
     [string]$Configuration = "Release"
 )
 
-$root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 
 $publishDir = "publish/$Runtime"

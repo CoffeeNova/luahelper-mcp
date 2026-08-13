@@ -19,7 +19,7 @@ param(
     [string]$Filter = ""
 )
 
-$root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 
 # Unit tests

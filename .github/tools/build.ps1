@@ -16,7 +16,7 @@ param(
     [string]$Configuration = "Debug"
 )
 
-$root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
+$root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 
 Write-Host "Building solution ($Configuration)..." -ForegroundColor Cyan

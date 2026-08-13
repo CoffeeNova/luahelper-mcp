@@ -831,39 +831,124 @@ builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("L
 
 ---
 
-## Phase 4: VS Code Extension
+## Phase 4: lualsp Provisioning + VS Code Extension ✅ COMPLETE
 
-**Goal:** One-click install from Marketplace.
+**Goal:** The machine does **not** need the LuaHelper VS Code extension pre-installed. A provisioning script detects which lualsp versions exist, downloads lualsp when missing, offers to update when a newer version is found, and forms the local bundle. The VS Code extension wraps the MCP server for one-click install from the Marketplace.
 
 **Estimated time:** 4–6 hours
 
+**Result:** `.github/tools/fetch-lualsp.ps1` detects/dowloads/updates/bundles lualsp (proven on a machine with **no** LuaHelper extension — downloaded v0.2.29 from the Marketplace VSIX), `lualsp/win-x64/lualsp.exe` + `lualsp/version.json` bundle formed and verified (LSP `initialize` smoke test + 10 integration tests passing), `vscode-extension/` wraps the server with `contributes.mcpServers`, `.github/tools/build-vsix.ps1` produces `luahelper-mcp-0.1.0.vsix` (42 MB, contains exe + lualsp), extension installs via `code --install-extension`, and the installed server answers a full MCP handshake returning real diagnostics for `check_lua_file`.
+
+> **Why this changed:** Phase 4 previously assumed `lualsp.exe` was copied from a locally installed `yinfei.luahelper` extension (`C:\Users\dnmno\.vscode\extensions\...`). That assumption breaks on any machine without the extension. `fetch-lualsp.ps1` removes the dependency: it scans the machine for every installed lualsp version (VS Code/Cursor extensions, existing bundle), downloads the latest when none exists, and proposes an update when a newer version is found.
+
 ---
 
-### Step 4.1: Bundle lualsp.exe
+### Step 4.1: Create lualsp Provisioning Script
 
-**Tasks:**
-1. Create `lualsp/` directory structure:
+**Create file:** `.github/tools/fetch-lualsp.ps1`
+
+**Purpose:** guarantee a `lualsp/{rid}/lualsp.exe` bundle exists on this machine. The script is idempotent — when the bundle is already up to date it prints status and exits 0 without changes.
+
+**Parameters:**
+
+| Parameter | Default | Purpose |
+|---|---|---|
+| `-Rid` | `win-x64` | Platform folder name inside the bundle |
+| `-OutputDir` | `lualsp` | Where the bundle is formed |
+| `-Update` | `$false` | Update to the latest found version without prompting (CI) |
+| `-Force` | `$false` | Re-download even if the bundle is up to date |
+| `-SkipDownload` | `$false` | Detect + compare only, no download, no writes (status check) |
+
+**Workflow (in order):**
+
+1. **Detect installed versions** — collect every `lualsp.exe` found on the machine, with its version:
+   - `$env:USERPROFILE\.vscode\extensions\yinfei.luahelper-*`
+   - `$env:USERPROFILE\.vscode-insiders\extensions\yinfei.luahelper-*`
+   - `$env:USERPROFILE\.cursor\extensions\yinfei.luahelper-*`
+   - Any other `*\.vscode*\extensions\yinfei.luahelper-*` folders found on the machine
+   - Version from the folder name suffix (`yinfei.luahelper-0.2.29`) or from the extension's `package.json`
+2. **Check the local bundle** — read `{OutputDir}/{Rid}/lualsp.exe` + `{OutputDir}/version.json` manifest (if present)
+3. **Compare** — latest detected version vs bundle version:
+   - No lualsp found anywhere → download latest (step 4)
+   - Newer version found than the bundle → offer update interactively: `Update lualsp 0.2.28 → 0.2.29? [Y/n]` (with `-Update` proceed without prompting)
+   - Bundle up to date → print status, exit 0
+4. **Download** — in priority order:
+   - **Marketplace VSIX:** download `https://marketplace.visualstudio.com/_apis/public/gallery/publishers/yinfei/vsextensions/luahelper/latest/vspackage` to a temp file (a `.vsix` is a ZIP archive), `Expand-Archive` it, copy `extension/server/lualsp.exe` to the bundle
+   - **Fallback (`code` CLI):** `code --install-extension yinfei.luahelper --extensions-dir <tempdir>`, then copy `server/lualsp.exe` from the temp extension folder
+   - **Network failure:** if a detected extension copy exists, offer to use it; otherwise exit with a clear error listing what to install manually
+5. **Form the bundle** — write:
    ```
    lualsp/
    ├── win-x64/lualsp.exe
-   ├── linux-x64/lualsp
-   └── osx-x64/lualsp
+   └── version.json
    ```
-2. Copy `lualsp.exe` from the VS Code extension:
-   ```powershell
-   New-Item -ItemType Directory -Force lualsp\win-x64
-   Copy-Item "C:\Users\dnmno\.vscode\extensions\yinfei.luahelper-0.2.29\server\lualsp.exe" lualsp\win-x64\
+   `version.json` manifest:
+   ```json
+   {
+     "version": "0.2.29",
+     "rid": "win-x64",
+     "source": "vscode-marketplace",
+     "sha256": "<hash of lualsp.exe>",
+     "fetchedAt": "2026-08-13T10:00:00Z"
+   }
    ```
-3. Add `lualsp/` to `.gitignore` (binaries shouldn't be in git) OR use Git LFS
-4. Create a build script that downloads platform-specific binaries
+6. **Report** — print the detected versions table, the chosen version, and the bundle path
+
+**Example usage:**
+```powershell
+# Fresh machine — downloads latest lualsp and forms the bundle
+.\ .github\tools\fetch-lualsp.ps1
+
+# CI — update to the latest found version silently
+.\ .github\tools\fetch-lualsp.ps1 -Update
+
+# Status check only (no network, no writes)
+.\ .github\tools\fetch-lualsp.ps1 -SkipDownload
+```
 
 **DoD:**
-- [ ] `lualsp/win-x64/lualsp.exe` exists
-- [ ] `ProcessManager` can find and launch it
+- [x] Script lists every lualsp version found on the machine (including zero)
+- [x] Script downloads lualsp from the Marketplace VSIX when none is found
+- [x] Script offers to update when a newer version is found than the bundle
+- [x] Script forms `lualsp/{rid}/lualsp.exe` + `lualsp/version.json`
+- [x] Script is idempotent — second run with an up-to-date bundle changes nothing
+
+> **Deviations found during implementation:**
+> - PowerShell 5.1's `Expand-Archive` rejects non-`.zip` extensions — the downloaded VSIX is copied to a `.zip` name before extraction; the download is retried (up to 3 attempts) until the response has a valid `PK` ZIP header.
+> - `Read-Host` fails in non-interactive shells — the update prompt degrades gracefully (skips update with a hint to use `-Update`).
+> - Version comparison handles prerelease/unparseable suffixes via `[version]` parse with a string-ordered fallback.
+> - Also fixed a latent bug in `build.ps1` / `test.ps1` / `deploy.ps1`: they resolved the repo root with three `Split-Path -Parent` hops (one too many), landing in the repo's parent directory.
 
 ---
 
-### Step 4.2: Create VS Code Extension Manifest
+### Step 4.2: Run Provisioning and Verify Bundle
+
+**Run:**
+```powershell
+.\ .github\tools\fetch-lualsp.ps1
+```
+
+**Verify:**
+```powershell
+# Manifest describes the binary
+Get-Content lualsp\version.json
+
+# ProcessManager can find and launch it
+dotnet run --project src\LuaHelperMcpServer -- "E:\Repository\ArenaChillPrep"
+```
+
+**DoD:**
+- [x] `lualsp/win-x64/lualsp.exe` exists and launches (produces diagnostics)
+- [x] `lualsp/version.json` matches the actual binary version
+- [x] `ProcessManager` finds and launches the bundled binary
+
+> **Result on this machine:** no LuaHelper extension was installed anywhere (`.vscode`, `.vscode-insiders`, `.cursor` all empty) — the script downloaded the VSIX from the Marketplace (v0.2.29), formed the bundle, and the `code-cli` fallback produced the identical binary (same SHA-256). Bundle verified by a direct LSP `initialize` handshake (smoke test) and by the 10 integration tests running against `lualsp/win-x64/lualsp.exe`.
+
+> Note: this phase provisions `win-x64` only. `linux-x64` / `osx-x64` bundles are produced by CI in Phase 5 (the script already supports `-Rid` for cross-platform provisioning).
+
+---
+
+### Step 4.3: Create VS Code Extension Manifest
 
 **Create file:** `vscode-extension/package.json`
 
@@ -900,12 +985,14 @@ builder.Services.Configure<LuaHelperOptions>(builder.Configuration.GetSection("L
 ```
 
 **DoD:**
-- [ ] `package.json` is valid
-- [ ] `contributes.mcpServers` declares the server
+- [x] `package.json` is valid
+- [x] `contributes.mcpServers` declares the server
+
+> **Deviations from the sample:** `engines.vscode` is `^1.99.0` (the `contributes.mcpServers` contribution point requires VS Code >= 1.99, not 1.90) and `"activationEvents": []` was added (vsce rejects a manifest with `main` but no `activationEvents`). The command points at the real publish artifact name: `${extensionPath}/LuaHelperMcpServer.exe`.
 
 ---
 
-### Step 4.3: Create Extension Entry Point
+### Step 4.4: Create Extension Entry Point
 
 **Create file:** `vscode-extension/extension.ts`
 
@@ -928,12 +1015,12 @@ export function deactivate() {
 **Create file:** `vscode-extension/tsconfig.json`
 
 **DoD:**
-- [ ] Extension compiles with `npm run compile`
-- [ ] No runtime errors on activation
+- [x] Extension compiles with `npm run compile`
+- [x] No runtime errors on activation
 
 ---
 
-### Step 4.4: Build Pipeline — Compile .NET + Package Extension
+### Step 4.5: Build Pipeline — Compile .NET + Package Extension
 
 **Create file:** `vscode-extension/.vscodeignore`
 
@@ -943,30 +1030,39 @@ export function deactivate() {
 node_modules/
 ```
 
-**Create build script:** `build.ps1`
+**Create build script:** `.github/tools/build-vsix.ps1` (alongside the other tool scripts; the CI pipeline in Phase 5 will call it from `.github/workflows/`)
 
 ```powershell
-# 1. Publish .NET server as self-contained AOT binary
-dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:PublishAot=true -o vscode-extension\
+# 0. Ensure lualsp.exe bundle exists (download/update if needed)
+& .\.github\tools\fetch-lualsp.ps1 -Rid win-x64 -Update
 
-# 2. Copy lualsp.exe
+# 1. Publish .NET server as self-contained AOT binary (falls back to
+#    self-contained non-AOT when the NativeAOT platform linker is missing)
+dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained `
+    -p:PublishAot=true -p:InvariantGlobalization=true -o vscode-extension
+
+# 2. Copy lualsp.exe from the bundle
 Copy-Item lualsp\win-x64\lualsp.exe vscode-extension\lualsp\win-x64\
+Copy-Item lualsp\version.json vscode-extension\lualsp\version.json
 
 # 3. Package VS Code extension
 cd vscode-extension
-vsce package
+npx --yes @vscode/vsce package --allow-missing-repository
 ```
 
 **DoD:**
-- [ ] `build.ps1` produces a `.vsix` file
-- [ ] `.vsix` contains the compiled .NET binary + lualsp.exe
+- [x] `build-vsix.ps1` produces a `.vsix` file
+- [x] `.vsix` contains the compiled .NET binary + lualsp.exe
+- [x] `build-vsix.ps1` succeeds on a machine with no LuaHelper extension installed (lualsp fetched automatically)
+
+> **Deviations found during implementation:** `.vscodeignore` also excludes `*.map` and `*.pdb`; the publish step tries NativeAOT first and falls back to a self-contained (non-AOT) publish with a warning when AOT prerequisites are missing — this machine has no MSVC platform linker (no Visual Studio C++ workload), so the fallback produced the vsix here (230 files, 42 MB). `vsce` is invoked via `npx @vscode/vsce` with `--allow-missing-repository` (no repository field yet). The relative `lualsp/win-x64/lualsp.exe` default in `appsettings.json` resolves against the exe directory (`LualspPathResolver`), so the packaged layout works regardless of the working directory VS Code uses. The build script lives at `.github/tools/build-vsix.ps1` (named so it does not collide with `.github/tools/build.ps1`, which builds the solution) so the Phase 5 CI workflow can call it directly.
 
 ---
 
-### Step 4.5: Test Extension Installation
+### Step 4.6: Test Extension Installation
 
 **Test steps:**
-1. Run `build.ps1`
+1. Run `.github/tools/build-vsix.ps1`
 2. Install the `.vsix`: `code --install-extension luahelper-mcp-0.1.0.vsix`
 3. Restart VS Code
 4. Open a Lua project
@@ -974,9 +1070,27 @@ vsce package
 6. Verify diagnostics are returned
 
 **DoD:**
-- [ ] Extension installs without errors
-- [ ] Copilot can use `check_lua_file` after extension install
-- [ ] **Phase 4 complete** ✅
+- [x] Extension installs without errors
+- [x] Copilot can use `check_lua_file` after extension install
+- [x] **Phase 4 complete** ✅
+
+> **Result on this machine:** `code --install-extension vscode-extension\luahelper-mcp-0.1.0.vsix --force` installed `your-publisher-id.luahelper-mcp` without errors. Because Copilot's UI cannot be driven headlessly, the verification was done at the protocol level — a full MCP handshake against the installed binary (`initialize` → `notifications/initialized` → `tools/list` → `tools/call check_lua_file`): `tools/list` exposes all 6 tools and `check_lua_file` returned `1 warning(s) ... [Warn type:18], not define annotate type: Frame` using the lualsp.exe bundled inside the installed extension. This is exactly the protocol Copilot speaks, so Copilot integration is verified as far as automatable.
+
+### Phase 4 outcome notes
+
+Consolidated record of what was learned during Phase 4 (previously kept in a separate `memories/` directory; now single-sourced in this plan).
+
+**Gotchas (beyond the per-step notes above):**
+- Never mix `StreamReader.ReadLine` and `BaseStream.Read` on the same redirected pipe — the StreamReader buffers ahead and swallows body bytes, hanging the reader (hit while smoke-testing lualsp directly).
+- Successful MCP `tools/call` responses do **not** contain an `isError` field (only error responses do) — a validation script that requires it will throw on success.
+- VS Code extensions whose manifest has `main` must also declare `activationEvents`; for MCP-only extensions `"activationEvents": []` is the correct modern form.
+- `invariant` gotcha: PowerShell 5.1's `Expand-Archive` validates the file extension, so a `.vsix` must be copied to a `.zip` name first.
+
+**Follow-ups for Phase 5:**
+- AOT publish works structurally but needs (a) the MSVC platform linker on Windows (VS C++ workload) and (b) `System.Text.Json` source generation (`JsonSerializerContext`) to clear the IL2026/IL3050 warnings from `LspMessageReader`, `LspMessageWriter`, `LuaDiagnosticTools`, `ConfigTools`, `DiagnosticResources`, `ConfigService`, and the `WithToolsFromAssembly`/`WithResourcesFromAssembly`/`WithPromptsFromAssembly` calls in `Program.cs` (prefer the generic variants).
+- Add `LICENSE` (MIT + BSD-3-Clause notice for lualsp.exe) — `vsce` warns without it; add a real `publisher` id and `repository` field to `vscode-extension/package.json` before publishing to the Marketplace.
+- CI workflow (`.github/workflows/`) should call `.github/tools/build-vsix.ps1` directly; `test.ps1` + `fetch-lualsp.ps1` are CI-ready (`-Update` runs silently).
+- The extension `your-publisher-id.luahelper-mcp-0.1.0` remains installed on the dev machine for manual Copilot testing.
 
 ---
 
@@ -1107,8 +1221,13 @@ Include:
 | `src/LuaHelperMcpServer/Tools/LuaDiagnosticTools.cs` | 1→2 | MCP tools |
 | `src/LuaHelperMcpServer/Tools/ConfigTools.cs` | 2 | Config MCP tools |
 | `src/LuaHelperMcpServer/appsettings.json` | 3 | Server config |
+| `.github/tools/fetch-lualsp.ps1` | 4 | lualsp detect/download/update/bundle |
 | `vscode-extension/package.json` | 4 | Extension manifest |
 | `vscode-extension/extension.ts` | 4 | Extension entry |
+| `vscode-extension/.vscodeignore` | 4 | vsce file excludes |
+| `vscode-extension/tsconfig.json` | 4 | TypeScript config |
+| `vscode-extension/README.md` | 4 | Extension description |
+| `.github/tools/build-vsix.ps1` | 4 | Extension build pipeline (fetch → publish → vsce package) |
 | `README.md` | 5 | Documentation |
 
 ## Quick Reference: Test Files

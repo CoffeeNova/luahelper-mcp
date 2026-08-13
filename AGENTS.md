@@ -17,7 +17,7 @@ Everything an agent needs — project context, architecture, skills, agents, pro
 - When the design or plan changes, update the files in `.github/` **first** — they are the contract.
 - `README.md` at the repo root is for **human users** — do not treat it as technical documentation.
 - All documentation and code in this workspace must be written in English.
-- **Contract-first, memory-last**: update `.github/` before code; record outcomes in `/memories/repo/` after.
+- **Contract-first**: update `.github/` before code — phase outcomes and deviations are recorded directly in `.github/docs/dev-plan-luahelper-mcp-server.md` (single source of truth; no separate notes directory).
 
 ## Skills (`.github/skills/`)
 
@@ -47,6 +47,8 @@ Everything an agent needs — project context, architecture, skills, agents, pro
 - `build.ps1` — build all projects in the solution.
 - `test.ps1` — run unit tests (fast) or all tests (with integration).
 - `deploy.ps1` — publish the MCP server and copy lualsp.exe for distribution.
+- `fetch-lualsp.ps1` — detect/download/update/bundle lualsp.exe (`lualsp/{rid}/` + `version.json`).
+- `build-vsix.ps1` — build the VS Code extension: fetch lualsp → publish server → `vsce package`.
 
 ## Local development environment
 

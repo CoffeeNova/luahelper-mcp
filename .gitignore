@@ -3,3 +3,13 @@ obj/
 *.user
 .vs/
 lualsp/
+vscode-extension/node_modules/
+vscode-extension/out/
+vscode-extension/*.vsix
+vscode-extension/*.exe
+vscode-extension/*.dll
+vscode-extension/*.pdb
+vscode-extension/*.deps.json
+vscode-extension/*.runtimeconfig.json
+vscode-extension/appsettings.json
+vscode-extension/lualsp/
