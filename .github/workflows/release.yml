@@ -183,7 +183,7 @@ jobs:
           fi
           ASSETS=""
           for f in artifacts/*/*.zip artifacts/*/*.vsix; do
-            [ -f "$f" ] && ASSETS="$ASSETS --attach $f"
+            [ -f "$f" ] && ASSETS="$ASSETS $f"
           done
           {
             echo "LuaHelper MCP Server $VERSION"

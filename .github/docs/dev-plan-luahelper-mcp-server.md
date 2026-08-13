@@ -1234,6 +1234,8 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 
 **Deviation (same run, third issue):** after the provisioning fix, `linux-x64`/`osx-x64` failed at the **smoke test** — same null-`Path` error from `$env:TEMP` in `smoke-test-mcp.ps1` (also Windows-only; `GetTempPath()` fix), and the `build-vsix` job failed with `'tsc' is not recognized` — `build-vsix.ps1` never installed extension dependencies (worked locally only because `node_modules/` was left over from Phase 4). Fix: `npm ci --no-audit --no-fund` step added to `build-vsix.ps1` (`package-lock.json` is committed).
 
+**Deviation (fourth issue, same release cycle):** the final `Create GitHub release` job failed with `unknown flag: --attach` — `gh release create` takes asset files as **positional arguments**, there is no `--attach` flag (that's `gh release upload` semantics). Fix: assets appended to the command as plain paths.
+
 ---
 
 ## Quick Reference: All MCP Tools
