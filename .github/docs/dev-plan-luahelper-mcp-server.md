@@ -1208,7 +1208,7 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 | Tag push `vMAJOR.MINOR.PATCH` | Tag version as-is (invalid tag → workflow fails) |
 | Tag push whose release already exists (auto-tag re-trigger / re-push) | Skip: `should-release=false`, no builds run |
 
-- New `version` job (needs `fetch-depth: 0` + `git describe --tags --abbrev=0`) computes `version`, `tag`, `should-release`; the three build jobs and the release job are gated on `should-release == 'true'`.
+- New `version` job (needs `fetch-depth: 0` + `git tag --list`) computes `version`, `tag`, `should-release`; the three build jobs and the release job are gated on `should-release == 'true'`.
 - Tag created by `gh release create` on main pushes; the auto-tag's own push event re-triggers the workflow, which is absorbed by the `should-release=false` guard (one cheap runner, no rebuild).
 - Idempotency: the release job re-checks `gh release view` before creating (protects against concurrent pushes computing the same version).
 
@@ -1235,6 +1235,10 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 **Deviation (same run, third issue):** after the provisioning fix, `linux-x64`/`osx-x64` failed at the **smoke test** — same null-`Path` error from `$env:TEMP` in `smoke-test-mcp.ps1` (also Windows-only; `GetTempPath()` fix), and the `build-vsix` job failed with `'tsc' is not recognized` — `build-vsix.ps1` never installed extension dependencies (worked locally only because `node_modules/` was left over from Phase 4). Fix: `npm ci --no-audit --no-fund` step added to `build-vsix.ps1` (`package-lock.json` is committed).
 
 **Deviation (fourth issue, same release cycle):** the final `Create GitHub release` job failed with `unknown flag: --attach` — `gh release create` takes asset files as **positional arguments**, there is no `--attach` flag (that's `gh release upload` semantics). Fix: assets appended to the command as plain paths.
+
+**Deviation (fifth issue, same release cycle):** the release job then failed with `failed to run git: fatal: not a git repository` — the `release` job never checked out the repo and `gh release create` internally invokes git. Fix: `actions/checkout` added to the `release` job.
+
+**Deviation (sixth — design change):** release and CI ran in **parallel** on a push (GitHub semantics), so a red CI could still produce a release. `release.yml` now triggers via `workflow_run` on CI completion instead of `push`; the `version` job throws unless the CI run concluded `success` on `main` or a `vX.Y.Z` tag (PR/other-branch CI runs are rejected), and all checkouts pin `github.event.workflow_run.head_sha` so the release builds exactly what CI tested. `ci.yml` gained `tags: ["v*"]` so tag pushes also get CI-gated. The tag/version signal now comes from `workflow_run.head_branch` (tag name for tag pushes, `main` otherwise). A `concurrency` group serializes release runs; `workflow_dispatch` remains for manual releases.
 
 ---
 
