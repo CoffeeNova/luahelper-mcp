@@ -35,14 +35,17 @@ jobs:
             if ($version -notmatch '^\d+\.\d+\.\d+$') {
               throw "Tag $env:GITHUB_REF_NAME is not a valid semver tag (expected vMAJOR.MINOR.PATCH)."
             }
-            if (gh release view $env:GITHUB_REF_NAME --json tagName -q .tagName 2>$null) {
+            $existing = gh release list --limit 1000 --json tagName --jq '.[].tagName' 2>$null
+            if ($existing -contains $env:GITHUB_REF_NAME) {
               $shouldRelease = "false"
               Write-Host "Release $env:GITHUB_REF_NAME already exists - skipping."
             }
           }
           else {
-            $latest = git describe --tags --abbrev=0 2>$null
-            if ($latest -and $latest -match '^v?\d+\.\d+\.\d+$') {
+            $tags = git tag --list 'v*' 2>$null
+            $latest = $tags | Where-Object { $_ -match '^v?\d+\.\d+\.\d+$' } |
+              Sort-Object { [version]$_.TrimStart('v') } | Select-Object -Last 1
+            if ($latest) {
               $parts = $latest.TrimStart('v').Split('.')
               $version = "$($parts[0]).$($parts[1]).$([int]$parts[2] + 1)"
             }
