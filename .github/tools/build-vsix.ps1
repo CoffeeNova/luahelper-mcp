@@ -62,7 +62,7 @@ New-Item -ItemType Directory -Path "vscode-extension/lualsp/win-x64" -Force | Ou
 Copy-Item "lualsp/win-x64/lualsp.exe" "vscode-extension/lualsp/win-x64/lualsp.exe" -Force
 Copy-Item "lualsp/version.json" "vscode-extension/lualsp/version.json" -Force
 
-Write-Host "== Step 4/4: Package VS Code extension ==" -ForegroundColor Cyan
+Write-Host "== Step 4/4: Install dependencies and package extension ==" -ForegroundColor Cyan
 $pkgPath = "vscode-extension/package.json"
 $pkgBackup = $null
 if ($Version) {
@@ -73,6 +73,12 @@ if ($Version) {
 }
 Push-Location vscode-extension
 try {
+    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+    if (-not $npmCmd) {
+        throw "npm not found on PATH - required to build the extension."
+    }
+    & $npmCmd.Source ci --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     npx --yes @vscode/vsce package --allow-missing-repository
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }

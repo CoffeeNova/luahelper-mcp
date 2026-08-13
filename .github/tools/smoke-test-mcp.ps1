@@ -31,7 +31,7 @@ if (-not (Test-Path -LiteralPath $ServerPath)) {
     throw "Server binary not found at $ServerPath"
 }
 
-$workDir = Join-Path $env:TEMP ("luahelper-smoke-" + [guid]::NewGuid().ToString("N"))
+$workDir = Join-Path ([System.IO.Path]::GetTempPath()) ("luahelper-smoke-" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $workDir | Out-Null
 $luaFile = Join-Path $workDir "test.lua"
 Set-Content -LiteralPath $luaFile -Value "---@type Frame`nlocal x = nil`n" -Encoding UTF8

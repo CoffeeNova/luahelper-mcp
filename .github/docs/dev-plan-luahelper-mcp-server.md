@@ -1232,6 +1232,8 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 
 **Deviation (same run, second issue):** the `linux-x64`/`osx-x64` build jobs failed at provisioning with `Cannot bind argument to parameter 'Path' because it is null` — `fetch-lualsp.ps1` used `$env:USERPROFILE`, which does not exist on Linux/macOS (they use `$HOME`). Fix: cross-platform `$userProfile` resolution (`USERPROFILE` → `HOME` → repo root) and `[System.IO.Path]::GetTempPath()` for the work dir.
 
+**Deviation (same run, third issue):** after the provisioning fix, `linux-x64`/`osx-x64` failed at the **smoke test** — same null-`Path` error from `$env:TEMP` in `smoke-test-mcp.ps1` (also Windows-only; `GetTempPath()` fix), and the `build-vsix` job failed with `'tsc' is not recognized` — `build-vsix.ps1` never installed extension dependencies (worked locally only because `node_modules/` was left over from Phase 4). Fix: `npm ci --no-audit --no-fund` step added to `build-vsix.ps1` (`package-lock.json` is committed).
+
 ---
 
 ## Quick Reference: All MCP Tools
