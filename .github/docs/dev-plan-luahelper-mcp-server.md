@@ -1337,6 +1337,104 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 
 ---
 
+## Phase 7: Test Hardening — Unit Coverage >80 % + Full Integration Suite
+
+**Goal:** Raise hand-written unit coverage to **>80 %** (CI-gated) and cover the
+entire MCP surface (7 tools, 2 resources, 2 prompts) end-to-end through the real
+server binary with golden/exact assertions.
+
+**Single source of truth:** `.github/docs/test-plan-luahelper-mcp-server.md`
+(goals/constraints §1, current state §2, inventory §3, refactor §4, unit plan
+§5, integration plan §6, infra §7, CI §8, docs §9, DoD §10, order §11).
+
+**Supersedes:** the original Step 0.8 "integration tests skip gracefully with
+`Assert.Ignore`" decision. Integration tests now **fail** when a required binary
+is missing; CI provisions `lualsp.exe` via `fetch-lualsp.ps1`.
+
+**Key decisions:**
+- **Analyzer-driven refactoring gate** (§4): ReSharper inspections
+  (`severity=warning`, `noBuild=true`) on all 3 projects before any test work;
+  fix only reported findings (dead code incl. `Models/InitializeOptions.cs`,
+  warnings); no self-directed refactoring. `.slnx` is unsupported by the
+  dotnet-debugger MCP — inspect projects only.
+- **Plan-mandated seam** (§4.3): `IProcessLauncher`/`IProcessHandle` (+
+  `ProcessLauncher`/`ProcessHandle` wrappers) injected into `ProcessManager`,
+  registered in DI — required to unit-test restart/backoff/shutdown logic.
+- **MCP wire format:** newline-delimited JSON-RPC over stdio (NOT
+  `Content-Length`); successful `tools/call` responses carry no `isError` field.
+
+**Deliverables:** ~15 new/expanded unit test classes → hand-written coverage
+>80 %; `McpStdioClient` + `IntegrationTestFixture` + `GoldenAssert`; expanded
+LSP-layer integration (golden assertions, crash-recovery, re-initialize);
+`McpServerIntegrationTests` (discovery + all tools/resources/prompts);
+`ci.yml` Release build + `LUAHELPER_LUALSP_PATH`/`LUAHELPER_MCP_SERVER_PATH` +
+coverage gate; docs updated per plan §9.
+
+**DoD (per plan §10):**
+- [x] Analyzer gate clean on all 3 projects; all reported warnings fixed (unfixable ones documented in the plan)
+- [x] All analyzer-reported dead code removed (incl. `InitializeOptions.cs`), each verified via `dotnet-debugger_code_find_usages` == 0
+- [x] `IProcessLauncher`/`IProcessHandle` seam in place; existing integration `ProcessManagerTests` still pass
+- [x] `InternalsVisibleTo` added; `BuildIgnoreSet`/`IsIgnoredFile` `internal static`
+- [x] All unit tests per plan §5 green; hand-written line coverage **>80 %** (127 unit tests)
+- [x] `McpStdioClient`/`IntegrationTestFixture`/`GoldenAssert` implemented
+- [x] LSP-layer integration per §6.4 green against real `lualsp.exe` (15 tests)
+- [x] MCP-layer integration per §6.5 green against the real server binary (25 tests)
+- [x] No `Assert.Ignore` in the integration project
+- [x] `ci.yml`: Release build + env vars + coverage gate
+- [x] `.github/` docs per §9 updated; `csharpier format src` clean; `dotnet build` clean
+
+**Step 6/7 deviations (recorded 2026-08-14):**
+
+1. **`check_lua_project` parallelized** — root-cause fix for a 60 s+ hang on the
+   fixtures project. Direct lualsp wire probes proved that lualsp publishes
+   diagnostics **only for files that have issues**; clean files get no
+   `publishDiagnostics` at all. The per-file `GetDiagnosticsAsync` 10 s timeout
+   then summed sequentially (6 clean files × 10 s = 60 s > the 60 s MCP client
+   timeout). `CheckLuaProject` now awaits all per-file waits concurrently
+   (`Task.WhenAll`), so the whole scan is bounded by one slow file (~10 s).
+   Diagnostics results are unchanged (same files, same order).
+2. **Config default contract fix** — `LuaHelperConfig.IgnoreFileOrDir` /
+   `IgnoreFileOrDirError` defaults were `[".vscode/"]` in code but the contract
+   (this doc line 171, lsp-protocol skill, research doc) requires
+   `[".vscode/", "one11.lua"]`. Code fixed; `ConfigServiceTests` updated
+   (3 assertions). A stale Release DLL (8/13) had the old default and caused
+   confusing MCP-layer probe results; Release was rebuilt from current source.
+3. **Golden normalization** — goldens embed machine-specific paths by design
+   (fixtures dir, `pluginPath`, temp dirs, file URIs). Tests normalize both
+   sides before comparison: fixture dirs → `FIXTURES`, lualsp dir →
+   `LUALSP_DIR`, per-test temp dirs → `TMP`, diagnostics `uri` → file name,
+   config `projectPath`/`pluginPath` fields → placeholders. The old
+   "exclude pluginPath" idea was replaced by normalization.
+4. **Actual server surface from goldens** — `serverInfo.version` is `0.1.0.0`
+   while `get_server_version` returns `0.1.0`; prompts are `fix_lua_warnings` +
+   `configure_luahelper`; resources are the fixed URI `luahelper://config`
+   (under `resources/list`) + template `luahelper://diagnostics/{+filePath}`
+   (under `resources/templates/list`, absolute Windows path in the URI).
+5. **Resource read errors** return a protocol-level `error` member (not
+   `result`), e.g. `McpException("File not found: ...")`; tests assert on
+   `response.error.message`.
+6. **GoldenCaptureTests are `[Explicit]`** — kept as the regeneration workflow
+   for lualsp upgrades (run manually, review, commit); CI runs the real tests.
+   `create_luahelper_json` capture goes to a temp dir (it overwrites the
+   project fixture's `luahelper.json` — the fixture was once destroyed this way
+   and had to be reconstructed by hand). The temporary `TempProbeTests.cs`
+   debugging probes were removed after the hang was root-caused.
+7. **`LspClientIntegrationTests` rewritten** — golden-exact per fixture
+   (7 check flags), clean/multi-file/`luahelper.json` scenarios, plus
+   `Reinitialize_SameProject_IsNoop`, `Reinitialize_DifferentProject_Reinitializes`,
+   `Shutdown_ThenReopen_Works`, `CrashRecovery_AfterProcessExit_RestartsAndRechecks`
+   (via `ProcessManager.ForceKill`). `McpServerIntegrationTests` (25 tests)
+   covers capability discovery, all 7 tools, both resources + the template,
+   both prompts, and error paths. 45 integration tests total.
+8. **Coverage gate** — `ci.yml` now builds Release, sets
+   `LUAHELPER_LUALSP_PATH` + `LUAHELPER_MCP_SERVER_PATH` for integration, and
+   enforces an 80 % line-coverage threshold on the unit suite. The unit test
+   project gained `coverlet.msbuild 6.0.4` (in addition to the existing
+   `coverlet.collector`) because the plan's `-p:Threshold=80` gate needs the
+   msbuild integration. Measured line coverage: **80.9 %**.
+
+---
+
 ## Quick Reference: Test Files
 
 | File | Phase | Tests |

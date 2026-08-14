@@ -15,7 +15,8 @@ public sealed class VersionTools
             Assembly
                 .GetExecutingAssembly()
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-                ?.InformationalVersion ?? "0.0.0";
+                ?.InformationalVersion
+            ?? "0.0.0";
 
         var plusIndex = version.IndexOf('+');
         return Task.FromResult(plusIndex >= 0 ? version[..plusIndex] : version);

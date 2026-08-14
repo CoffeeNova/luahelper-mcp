@@ -15,11 +15,9 @@ public sealed class LspClient : ILspClient, IDisposable
 
     private LspState _state = LspState.NotStarted;
     private string? _projectPath;
-    private LuaHelperConfig? _config;
     private int _nextRequestId = 1;
     private LspMessageReader? _reader;
     private LspMessageWriter? _writer;
-    private Task? _readLoopTask;
     private CancellationTokenSource? _readLoopCts;
 
     private readonly ConcurrentDictionary<int, TaskCompletionSource<JsonElement>> _pendingRequests =
@@ -56,13 +54,12 @@ public sealed class LspClient : ILspClient, IDisposable
             return;
 
         _projectPath = projectPath;
-        _config = config;
 
         await _processManager.EnsureRunningAsync(ct);
         SetupReaderWriter();
 
         _readLoopCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _readLoopTask = Task.Run(() => ReadLoopAsync(_readLoopCts.Token), _readLoopCts.Token);
+        _ = Task.Run(() => ReadLoopAsync(_readLoopCts.Token), _readLoopCts.Token);
 
         _state = LspState.Initializing;
         await SendInitializeRequestAsync(projectPath, config, ct);

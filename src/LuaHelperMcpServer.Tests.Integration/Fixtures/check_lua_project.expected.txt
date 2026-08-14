@@ -1,0 +1,10 @@
+Project C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures: 3 warning(s) across 3 file(s)
+
+--- C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_duplicate_table_key.lua (1) ---
+  L0:19 [Warning] [Warn type:5], the table contains duplicate keys: a
+
+--- C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_syntax_error.lua (1) ---
+  L0:9 [Error] [Warn type:1], `EOF` can not start
+
+--- C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_with_warning.lua (1) ---
+  L0:9 [Information] [Warn type:18], not define annotate type: Frame

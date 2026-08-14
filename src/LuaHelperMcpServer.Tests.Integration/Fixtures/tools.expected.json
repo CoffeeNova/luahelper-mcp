@@ -1,0 +1,96 @@
+{
+  "result": {
+    "tools": [
+      {
+        "name": "check_lua_file",
+        "description": "Run LuaHelper diagnostics on a single .lua file. Returns warnings and errors with line numbers.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": {
+              "description": "Absolute path to the .lua file to check",
+              "type": "string"
+            }
+          },
+          "required": [
+            "filePath"
+          ]
+        }
+      },
+      {
+        "name": "get_supported_checks",
+        "description": "List all available LuaHelper check types with their IDs, names, and whether they are enabled by default.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "get_luahelper_config",
+        "description": "Get the current LuaHelper configuration for a project, including check flags and ignored files.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectPath": {
+              "description": "Absolute path to the project root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "projectPath"
+          ]
+        }
+      },
+      {
+        "name": "get_server_version",
+        "description": "Get the LuaHelper MCP Server version (e.g. \u00220.1.0\u0022).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "create_luahelper_json",
+        "description": "Create a default luahelper.json configuration file in the project root.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectPath": {
+              "description": "Absolute path to the project root",
+              "type": "string"
+            }
+          },
+          "required": [
+            "projectPath"
+          ]
+        }
+      },
+      {
+        "name": "get_luahelper_version",
+        "description": "Get the version of the bundled lualsp.exe binary.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "check_lua_project",
+        "description": "Run LuaHelper diagnostics on an entire Lua project. Scans all .lua files recursively.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "projectPath": {
+              "description": "Absolute path to the project root directory",
+              "type": "string"
+            }
+          },
+          "required": [
+            "projectPath"
+          ]
+        }
+      }
+    ]
+  },
+  "id": 2,
+  "jsonrpc": "2.0"
+}

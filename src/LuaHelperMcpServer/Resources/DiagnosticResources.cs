@@ -61,15 +61,18 @@ public sealed class DiagnosticResources
         return JsonSerializer.Serialize(diagnostics, LspJson.IndentedCamelCase.ListLuaDiagnostic);
     }
 
-    private async Task EnsureLspReadyAsync(string projectPath, LuaHelperConfig config, CancellationToken ct)
+    private async Task EnsureLspReadyAsync(
+        string projectPath,
+        LuaHelperConfig config,
+        CancellationToken ct
+    )
     {
         try
         {
             await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
         }
-        catch (InvalidOperationException) when (
-            _lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed
-        )
+        catch (InvalidOperationException)
+            when (_lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed)
         {
             await _lspClient.ShutdownAsync(ct);
             await _lspClient.EnsureInitializedAsync(projectPath, config, ct);

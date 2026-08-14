@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_duplicate_table_key.lua",
+    "startLine": 0,
+    "startCharacter": 19,
+    "endLine": 0,
+    "endCharacter": 20,
+    "severity": 2,
+    "warningType": 0,
+    "message": "[Warn type:5], the table contains duplicate keys: a",
+    "source": null
+  }
+]

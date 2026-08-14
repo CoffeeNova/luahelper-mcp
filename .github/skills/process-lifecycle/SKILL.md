@@ -17,6 +17,18 @@ EnsureRunningAsync()
         └── Reset _restartAttempts = 0
 ```
 
+## Testability seam (IProcessLauncher / IProcessHandle)
+
+`ProcessManager` spawns processes through `IProcessLauncher`
+(`ProcessLauncher` is the production wrapper around
+`System.Diagnostics.Process`; `ProcessHandle` wraps the `Process` members the
+manager uses — `Id`, `HasExited`, streams, `Start`, events, `WaitForExit`,
+`Kill`, dispose). The launcher is an optional constructor parameter defaulting
+to a real `ProcessLauncher`, and is registered in DI. Unit tests inject
+`FakeProcessLauncher`/`FakeProcessHandle` (in-memory streams, manual
+`RaiseExited()` control) so restart/backoff/shutdown logic is testable without
+a real OS process. `GetProcessAsync` returns `Task<IProcessHandle>`.
+
 ## Restart policy
 
 - Max 3 restart attempts per crash cycle

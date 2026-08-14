@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_with_warning.lua",
+    "startLine": 0,
+    "startCharacter": 9,
+    "endLine": 0,
+    "endCharacter": 14,
+    "severity": 3,
+    "warningType": 0,
+    "message": "[Warn type:18], not define annotate type: Frame",
+    "source": null
+  }
+]

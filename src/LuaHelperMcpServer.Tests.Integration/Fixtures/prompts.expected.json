@@ -1,0 +1,32 @@
+{
+  "result": {
+    "prompts": [
+      {
+        "name": "fix_lua_warnings",
+        "title": "Fix Lua warnings",
+        "description": "Analyze a Lua file and suggest fixes for all warnings reported by LuaHelper.",
+        "arguments": [
+          {
+            "name": "filePath",
+            "description": "Absolute path to the .lua file to fix",
+            "required": true
+          }
+        ]
+      },
+      {
+        "name": "configure_luahelper",
+        "title": "Configure LuaHelper",
+        "description": "Help configure luahelper.json for a Lua project.",
+        "arguments": [
+          {
+            "name": "projectPath",
+            "description": "Absolute path to the project root",
+            "required": true
+          }
+        ]
+      }
+    ]
+  },
+  "id": 4,
+  "jsonrpc": "2.0"
+}

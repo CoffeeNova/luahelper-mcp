@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_self_assign.lua",
+    "startLine": 1,
+    "startCharacter": 0,
+    "endLine": 1,
+    "endCharacter": 5,
+    "severity": 2,
+    "warningType": 0,
+    "message": "[Warn type:20], self assign error",
+    "source": null
+  }
+]

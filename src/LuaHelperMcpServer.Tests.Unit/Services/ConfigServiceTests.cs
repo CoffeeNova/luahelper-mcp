@@ -62,7 +62,7 @@ public class ConfigServiceTests
         config.CheckSyntax.ShouldBeTrue();
         config.CheckAnnotateType.ShouldBeTrue();
         config.IgnoreModules.ShouldBeEmpty();
-        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/" });
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "one11.lua" });
         config.RequirePathSeparator.ShouldBe(".");
         await fileReader
             .DidNotReceive()
@@ -115,7 +115,7 @@ public class ConfigServiceTests
         // Assert
         config.AllEnable.ShouldBeTrue();
         config.IgnoreModules.ShouldBeEmpty();
-        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/" });
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "one11.lua" });
         config.RequirePathSeparator.ShouldBe(".");
     }
 
@@ -228,5 +228,104 @@ public class ConfigServiceTests
         // Assert
         version.ShouldContain("LuaHelper lualsp.exe", Case.Sensitive);
         version.ShouldContain("v0.2.29", Case.Sensitive);
+    }
+
+    [Test]
+    public async Task GetConfig_MalformedJson_LogsAndReturnsDefaults()
+    {
+        // Arrange
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader
+            .ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns("{ this is not valid json");
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert
+        config.AllEnable.ShouldBeTrue();
+        config.CheckSyntax.ShouldBeTrue();
+        config.CheckAnnotateType.ShouldBeTrue();
+        config.IgnoreModules.ShouldBeEmpty();
+        config.IgnoreFileOrDir.ShouldBe(new[] { ".vscode/", "one11.lua" });
+    }
+
+    [TestCase("CheckSyntax", "checkSyntax", false)]
+    [TestCase("CheckNoDefine", "checkNoDefine", true)]
+    [TestCase("CheckAfterDefine", "checkAfterDefine", true)]
+    [TestCase("CheckLocalNoUse", "checkLocalNoUse", true)]
+    [TestCase("CheckTableDuplicateKey", "checkTableDuplicateKey", false)]
+    [TestCase("CheckReferNoFile", "checkReferNoFile", true)]
+    [TestCase("CheckAssignParamNum", "checkAssignParamNum", false)]
+    [TestCase("CheckLocalDefineParamNum", "checkLocalDefineParamNum", false)]
+    [TestCase("CheckGotoLable", "checkGotoLable", false)]
+    [TestCase("CheckFuncParam", "checkFuncParam", true)]
+    [TestCase("CheckImportModuleVar", "checkImportModuleVar", true)]
+    [TestCase("CheckIfNotVar", "checkIfNotVar", true)]
+    [TestCase("CheckFunctionDuplicateParam", "checkFunctionDuplicateParam", false)]
+    [TestCase("CheckBinaryExpressionDuplicate", "checkBinaryExpressionDuplicate", true)]
+    [TestCase("CheckErrorOrAlwaysTrue", "checkErrorOrAlwaysTrue", true)]
+    [TestCase("CheckErrorAndAlwaysFalse", "checkErrorAndAlwaysFalse", true)]
+    [TestCase("CheckNoUseAssign", "checkNoUseAssign", true)]
+    [TestCase("CheckAnnotateType", "checkAnnotateType", false)]
+    [TestCase("CheckDuplicateIf", "checkDuplicateIf", false)]
+    [TestCase("CheckSelfAssign", "checkSelfAssign", true)]
+    [TestCase("CheckFloatEq", "checkFloatEq", true)]
+    public async Task GetConfig_IndividualCheckFlag_IsMerged(
+        string propertyName,
+        string jsonName,
+        bool value
+    )
+    {
+        // Arrange
+        var json = $"{{\"{jsonName}\": {(value ? "true" : "false")}}}";
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(json);
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert
+        var property = typeof(LuaHelperConfig).GetProperty(propertyName);
+        property.ShouldNotBeNull();
+        property.GetValue(config).ShouldBe(value);
+    }
+
+    [Test]
+    public async Task GetConfig_EnableReport_IsMerged()
+    {
+        // Arrange
+        const string json = """{ "EnableReport": false }""";
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(json);
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert
+        config.EnableReport.ShouldBeFalse();
+    }
+
+    [Test]
+    public async Task GetConfig_AllEnableBool_WinsOverShowWarnFlag()
+    {
+        // Arrange — AllEnable=false takes precedence over ShowWarnFlag=1
+        const string json = """{ "ShowWarnFlag": 1, "AllEnable": false }""";
+        var fileReader = Fixture.Create<IFileReader>();
+        fileReader.FileExists(Arg.Any<string>()).Returns(true);
+        fileReader.ReadAllTextAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(json);
+        var service = CreateService(fileReader);
+
+        // Act
+        var config = await service.GetConfig("C:\\project");
+
+        // Assert
+        config.AllEnable.ShouldBeFalse();
     }
 }

@@ -89,7 +89,7 @@ public sealed class ConfigService : IConfigService
 
     private LuaHelperConfig BuildDefaultConfig(string projectPath)
     {
-        var checks = _options.Value.DefaultChecks ?? new CheckDefaults();
+        var checks = _options.Value.DefaultChecks;
         return new LuaHelperConfig
         {
             ProjectPath = projectPath,

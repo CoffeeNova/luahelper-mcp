@@ -259,6 +259,13 @@ sequenceDiagram
     LSP-->>MCP: Ready
 ```
 
+**Testability seam:** `ProcessManager` spawns processes via `IProcessLauncher`
+(`ProcessLauncher` production wrapper around `System.Diagnostics.Process`;
+`IProcessHandle`/`ProcessHandle` wraps the `Process` members `ProcessManager`
+uses). Unit tests inject `FakeProcessLauncher`/`FakeProcessHandle` (in-memory
+streams, manual exit control) to cover restart/backoff/shutdown logic without a
+real OS process. See `.github/docs/test-plan-luahelper-mcp-server.md` §4.3.
+
 ---
 
 ## 4. Data Flow
@@ -983,21 +990,22 @@ flowchart TD
 
 ```mermaid
 graph TB
-    subgraph "Unit Tests (90%)"
+    subgraph "Unit Tests (80%+ hand-written line coverage, CI-gated)"
         A[LspMessageReader/Writer<br/>Content-Length parsing]
         B[DiagnosticCache<br/>store/retrieve]
         C[ConfigService<br/>merge logic]
-        D[ProcessManager<br/>mock process]
+        D[ProcessManager<br/>logic via IProcessLauncher seam]
         E[LspClient<br/>mock LSP messages]
+        F[Tools/Resources/Prompts<br/>mocked services]
     end
 
-    subgraph "Integration Tests (10%)"
-        F[LspClient + real lualsp.exe<br/>against test Lua files]
-        G[MCP Server end-to-end<br/>in-memory transport]
+    subgraph "Integration Tests (real binaries, no skip)"
+        G[LspClient + real lualsp.exe<br/>golden assertions per fixture]
+        H[McpServerIntegrationTests<br/>real server binary via McpStdioClient,<br/>newline JSON-RPC over stdio]
     end
 
     subgraph "Manual Tests"
-        H[VS Code Copilot<br/>with real MCP server]
+        I[VS Code Copilot<br/>with real MCP server]
     end
 ```
 
@@ -1069,7 +1077,22 @@ public async Task LspClient_Initialize_SendsCorrectMessage()
 
 ### Integration Testing
 
-Use the **real `lualsp.exe`** with a small test Lua project:
+Use the **real `lualsp.exe`** with a small test Lua project. Two layers:
+
+- **LSP layer:** `LspClient` + `ProcessManager` against real `lualsp.exe`
+  (`Content-Length` framing). Assertions compare against **golden**
+  `.expected.json` fixtures (exact diagnostics); fixtures and goldens are
+  updated together when `lualsp.exe` is upgraded.
+- **MCP layer:** `McpServerIntegrationTests` spawns the real `LuaHelperMcpServer`
+  binary via `McpStdioClient` and speaks newline-delimited JSON-RPC over real
+  stdio. Every tool (7), resource (2), and prompt (2) is asserted with
+  golden/exact values.
+
+**No graceful skipping:** if `lualsp.exe` or the server binary is missing,
+tests **fail** with a clear message (`Assert.Fail`), never `Assert.Ignore`. CI
+provisions binaries via `fetch-lualsp.ps1` and sets `LUAHELPER_LUALSP_PATH` /
+`LUAHELPER_MCP_SERVER_PATH`. See `.github/docs/test-plan-luahelper-mcp-server.md`
+§6.
 
 ```csharp
 [Fact]

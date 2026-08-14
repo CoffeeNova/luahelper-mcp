@@ -1,0 +1,15 @@
+{
+  "result": {
+    "resourceTemplates": [
+      {
+        "name": "Diagnostics",
+        "title": "Lua file diagnostics",
+        "uriTemplate": "luahelper://diagnostics/{\u002BfilePath}",
+        "description": "Returns the current LuaHelper diagnostics for a Lua file as JSON.",
+        "mimeType": "application/json"
+      }
+    ]
+  },
+  "id": 15,
+  "jsonrpc": "2.0"
+}

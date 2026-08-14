@@ -1,0 +1,15 @@
+{
+  "result": {
+    "resources": [
+      {
+        "name": "Config",
+        "title": "LuaHelper configuration",
+        "uri": "luahelper://config",
+        "description": "Returns the current LuaHelper configuration for the active project as JSON.",
+        "mimeType": "application/json"
+      }
+    ]
+  },
+  "id": 3,
+  "jsonrpc": "2.0"
+}

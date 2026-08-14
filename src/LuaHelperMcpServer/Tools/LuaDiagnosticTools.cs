@@ -142,17 +142,11 @@ public sealed class LuaDiagnosticTools
     ];
 
     private readonly ILspClient _lspClient;
-    private readonly IDiagnosticCache _cache;
     private readonly IConfigService _configService;
 
-    public LuaDiagnosticTools(
-        ILspClient lspClient,
-        IDiagnosticCache cache,
-        IConfigService configService
-    )
+    public LuaDiagnosticTools(ILspClient lspClient, IConfigService configService)
     {
         _lspClient = lspClient ?? throw new ArgumentNullException(nameof(lspClient));
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
     }
 
@@ -201,26 +195,33 @@ public sealed class LuaDiagnosticTools
         foreach (var file in luaFiles)
             await _lspClient.OpenFileAsync(file, ct);
 
-        var byFile = new Dictionary<string, List<LuaDiagnostic>>();
-        foreach (var file in luaFiles)
-        {
-            var uri = LspClient.PathToUri(file);
-            List<LuaDiagnostic> diagnostics;
-            try
-            {
-                diagnostics = await _lspClient
-                    .GetDiagnosticsAsync(file, ct)
-                    .WaitAsync(TimeSpan.FromSeconds(10), ct);
-            }
-            catch (TimeoutException)
-            {
-                diagnostics = [];
-            }
-            byFile[uri] = diagnostics;
-        }
+        var results = await Task.WhenAll(
+            luaFiles.Select(file => CollectProjectFileDiagnosticsAsync(file, ct))
+        );
+        var byFile = results.ToDictionary(result => result.Key, result => result.Value);
 
         var collection = new DiagnosticCollection { ProjectPath = projectPath, ByFile = byFile };
         return collection.ToFormattedString();
+    }
+
+    private async Task<
+        KeyValuePair<string, List<LuaDiagnostic>>
+    > CollectProjectFileDiagnosticsAsync(string file, CancellationToken ct)
+    {
+        try
+        {
+            var diagnostics = await _lspClient
+                .GetDiagnosticsAsync(file, ct)
+                .WaitAsync(TimeSpan.FromSeconds(10), ct);
+            return new KeyValuePair<string, List<LuaDiagnostic>>(
+                LspClient.PathToUri(file),
+                diagnostics
+            );
+        }
+        catch (TimeoutException)
+        {
+            return new KeyValuePair<string, List<LuaDiagnostic>>(LspClient.PathToUri(file), []);
+        }
     }
 
     [McpServerTool(Name = "get_supported_checks")]
@@ -251,16 +252,15 @@ public sealed class LuaDiagnosticTools
         {
             await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
         }
-        catch (InvalidOperationException) when (
-            _lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed
-        )
+        catch (InvalidOperationException)
+            when (_lspClient.State == LspState.Crashed || _lspClient.State == LspState.Failed)
         {
             await _lspClient.ShutdownAsync(ct);
             await _lspClient.EnsureInitializedAsync(projectPath, config, ct);
         }
     }
 
-    private static HashSet<string> BuildIgnoreSet(List<string>? ignoreFileOrDir)
+    internal static HashSet<string> BuildIgnoreSet(List<string>? ignoreFileOrDir)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in ignoreFileOrDir ?? [])
@@ -273,7 +273,7 @@ public sealed class LuaDiagnosticTools
         return set;
     }
 
-    private static bool IsIgnoredFile(string filePath, HashSet<string> ignoreDirs)
+    internal static bool IsIgnoredFile(string filePath, HashSet<string> ignoreDirs)
     {
         foreach (var ignore in ignoreDirs)
         {

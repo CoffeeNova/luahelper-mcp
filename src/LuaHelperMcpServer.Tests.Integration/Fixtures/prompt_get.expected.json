@@ -1,0 +1,16 @@
+{
+  "result": {
+    "description": "Analyze a Lua file and suggest fixes for all warnings reported by LuaHelper.",
+    "messages": [
+      {
+        "content": {
+          "type": "text",
+          "text": "Analyze the Lua file at C:\\Repository\\luahelper-mcp\\src\\LuaHelperMcpServer.Tests.Integration\\Fixtures\\test_with_warning.lua and suggest fixes for all warnings reported by LuaHelper."
+        },
+        "role": "user"
+      }
+    ]
+  },
+  "id": 18,
+  "jsonrpc": "2.0"
+}

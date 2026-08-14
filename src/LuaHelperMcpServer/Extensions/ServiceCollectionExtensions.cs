@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IFileReader, FileReader>();
         services.AddSingleton<IDiagnosticCache, DiagnosticCache>();
+        services.AddSingleton<IProcessLauncher, ProcessLauncher>();
         services.AddSingleton<IConfigService>(sp => new ConfigService(
             sp.GetRequiredService<IOptions<LuaHelperOptions>>(),
             sp.GetRequiredService<ILogger<ConfigService>>(),
@@ -21,13 +22,14 @@ public static class ServiceCollectionExtensions
         {
             var options = sp.GetRequiredService<IOptions<LuaHelperOptions>>().Value;
             var backoffSchedule = options
-                .BackoffScheduleSeconds?.Select(seconds => TimeSpan.FromSeconds(seconds))
+                .BackoffScheduleSeconds.Select(seconds => TimeSpan.FromSeconds(seconds))
                 .ToArray();
             return new ProcessManager(
                 sp.GetRequiredService<ILogger<ProcessManager>>(),
                 LualspPathResolver.Resolve(options.LualspPath),
                 maxRestarts: options.MaxRestarts,
-                backoffSchedule: backoffSchedule
+                backoffSchedule: backoffSchedule,
+                launcher: sp.GetRequiredService<IProcessLauncher>()
             );
         });
         services.AddSingleton<ILspClient, LspClient>();

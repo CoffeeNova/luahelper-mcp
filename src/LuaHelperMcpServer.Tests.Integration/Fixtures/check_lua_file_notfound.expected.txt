@@ -1,0 +1,1 @@
+Error: File not found: C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\missing_file.lua

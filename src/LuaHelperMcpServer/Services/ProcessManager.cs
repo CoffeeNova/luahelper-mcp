@@ -6,11 +6,12 @@ namespace LuaHelperMcpServer.Services;
 public sealed class ProcessManager : IProcessManager, IDisposable
 {
     private readonly ILogger<ProcessManager> _logger;
+    private readonly IProcessLauncher _launcher;
     private readonly string _exePath;
     private readonly string _arguments;
     private readonly int _maxRestarts;
     private readonly TimeSpan[] _backoffSchedule;
-    private Process? _process;
+    private IProcessHandle? _process;
     private bool _disposed;
     private int _restartAttempts;
 
@@ -23,7 +24,8 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         string exePath,
         string? arguments = null,
         int maxRestarts = 3,
-        TimeSpan[]? backoffSchedule = null
+        TimeSpan[]? backoffSchedule = null,
+        IProcessLauncher? launcher = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -33,6 +35,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         _backoffSchedule =
             backoffSchedule
             ?? [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8)];
+        _launcher = launcher ?? new ProcessLauncher();
     }
 
     public async Task EnsureRunningAsync(CancellationToken ct = default)
@@ -107,8 +110,8 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             CreateNoWindow = true,
         };
 
-        _process = new Process { StartInfo = startInfo };
-        _process.EnableRaisingEvents = true;
+        _process = _launcher.Start(startInfo);
+        _process.EnableRaisingEvents();
         _process.Exited += OnProcessExited;
 
         if (!_process.Start())
@@ -117,7 +120,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
         _restartAttempts = 0;
     }
 
-    public Task<Process> GetProcessAsync(CancellationToken ct = default)
+    public Task<IProcessHandle> GetProcessAsync(CancellationToken ct = default)
     {
         if (!IsRunning)
             throw new InvalidOperationException(
@@ -132,7 +135,7 @@ public sealed class ProcessManager : IProcessManager, IDisposable
             throw new InvalidOperationException(
                 "Process is not running. Call EnsureRunningAsync first."
             );
-        return (_process.StandardInput.BaseStream, _process.StandardOutput.BaseStream);
+        return (_process.StandardInput, _process.StandardOutput);
     }
 
     public async Task ShutdownAsync(CancellationToken ct = default)

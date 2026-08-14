@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_undefined_global.lua",
+    "startLine": 0,
+    "startCharacter": 14,
+    "endLine": 0,
+    "endCharacter": 25,
+    "severity": 2,
+    "warningType": 0,
+    "message": "[Warn type:2], var not define: C_Container",
+    "source": null
+  }
+]

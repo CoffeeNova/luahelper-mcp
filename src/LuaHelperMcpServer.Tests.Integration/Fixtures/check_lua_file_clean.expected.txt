@@ -1,0 +1,1 @@
+No warnings found in C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_clean.lua

@@ -89,11 +89,13 @@ luahelper-mcp/
 
 ### Testing
 - Unit tests must NOT touch filesystem or spawn real processes
-- Use `FakeLspServer` (anonymous pipes) + `MockProcessManager` for LspClient tests
+- Use `FakeLspServer` (anonymous pipes) + `MockProcessManager` for LspClient tests; `FakeProcessLauncher`/`FakeProcessHandle` for `ProcessManager` logic tests (via the `IProcessLauncher` seam)
 - Use `NSubstitute` (+ `AutoFixture` with `AutoNSubstituteCustomization`) + `IFileReader` to mock file I/O
 - All assertions use `Shouldly` (e.g. `x.ShouldBe(y)`, `text.ShouldContain(s, Case.Sensitive)`); never `Assert.That` constraint syntax
-- Integration tests use real `lualsp.exe` from `LUAHELPER_EXTENSION_PATH` env var
-- Integration tests skip gracefully with `Assert.Ignore` if lualsp.exe not found
+- **Coverage gate:** hand-written unit line coverage must stay **> 80 %** (enforced in CI)
+- Integration tests use real `lualsp.exe` + the real `LuaHelperMcpServer` binary over real stdio; MCP layer is newline-delimited JSON-RPC via `McpStdioClient`, LSP layer is `Content-Length` framing
+- **No `Assert.Ignore` in the integration project** — if a required binary is missing the test **fails** with a clear message (supersedes the old "skip gracefully" guidance; CI provisions binaries via `fetch-lualsp.ps1`)
+- Golden/exact assertions: fixtures + `.expected.json` goldens are updated together when `lualsp.exe` is upgraded
 
 ## Environment variables
 
@@ -102,6 +104,7 @@ luahelper-mcp/
 | `LUAHELPER_LUALSP_PATH` | Path to lualsp.exe | `lualsp/win-x64/lualsp.exe` |
 | `LUAHELPER_PLUGIN_PATH` | PluginPath for initializationOptions | Directory of lualsp.exe |
 | `LUAHELPER_EXTENSION_PATH` | VS Code extension root (for tests) | `C:\Users\...\yinfei.luahelper-0.2.29` |
+| `LUAHELPER_MCP_SERVER_PATH` | Server binary for MCP integration tests (`exe` or `dotnet;<dll>`) | Release `LuaHelperMcpServer.dll` in `bin` |
 
 ## Build & test commands
 

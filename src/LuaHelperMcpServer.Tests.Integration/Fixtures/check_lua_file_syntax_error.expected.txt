@@ -1,0 +1,2 @@
+1 warning(s) in C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_syntax_error.lua:
+  L0:9 [Error] [Warn type:1], `EOF` can not start

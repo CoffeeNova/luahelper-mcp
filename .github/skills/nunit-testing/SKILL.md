@@ -38,8 +38,10 @@ Notes:
 - `ShouldBe` on collections is order-sensitive and element-wise; `ShouldHaveCount`
   is v5-only — use `Count.ShouldBe(n)` on 4.x.
 - `Should.ThrowAsync<T>` catches exact type and derived types (like NUnit's `CatchAsync`).
-- `Assert.Ignore` in integration tests is runner flow-control (skips), not an
-  assertion — it stays even with Shouldly.
+- `Assert.Ignore` is **forbidden** in the integration project (per the test
+  plan). If a required binary (`lualsp.exe`, server dll) is missing, the test
+  must **fail** with a clear message via `Assert.Fail`. This supersedes the old
+  "skip gracefully" guidance — CI provisions binaries via `fetch-lualsp.ps1`.
 
 ## Mocking with NSubstitute + AutoFixture
 
@@ -131,7 +133,17 @@ dotnet test src/LuaHelperMcpServer.Tests.Unit --filter "FullyQualifiedName~LspMe
 
 ## Integration test conventions
 
-- Use `[SetUp]` to check if lualsp.exe exists; call `Assert.Ignore()` if not found
+- **No `Assert.Ignore`** — integration tests must **fail** if a required binary
+  is missing (see `.github/docs/test-plan-luahelper-mcp-server.md` §6.2 for
+  binary resolution order). CI provisions `lualsp.exe` via `fetch-lualsp.ps1`.
+- Use `[SetUp]` to resolve binaries via `IntegrationTestFixture`; call
+  `Assert.Fail("lualsp.exe not found. Run .github/tools/fetch-lualsp.ps1 first.")`
+  if missing.
 - Use `[TearDown]` to dispose resources
-- Read `LUAHELPER_EXTENSION_PATH` env var for lualsp.exe location
-- Test fixtures go in `Fixtures/` directory (copied to output)
+- Test fixtures go in `Fixtures/` directory (copied to output); each fixture has
+  a golden `.expected.json` (exact diagnostics) that is updated together with
+  the fixture when `lualsp.exe` is upgraded
+- Assert against **golden/exact** expected values via `GoldenAssert.JsonEquals`,
+  never fuzzy tolerances
+- MCP-layer end-to-end tests spawn the real server binary via `McpStdioClient`
+  (newline-delimited JSON-RPC over real stdio — NOT `Content-Length` framing)

@@ -12,7 +12,6 @@ namespace LuaHelperMcpServer.Tests.Unit.Helpers;
 public sealed class FakeLspServer : IDisposable
 {
     private readonly CancellationTokenSource _cts = new();
-    private Task? _runTask;
 
     private readonly AnonymousPipeServerStream _clientToServerWrite;
     private readonly AnonymousPipeClientStream _clientToServerRead;
@@ -41,7 +40,36 @@ public sealed class FakeLspServer : IDisposable
 
     public void Start()
     {
-        _runTask = Task.Run(() => RunAsync(_cts.Token));
+        _ = Task.Run(() => RunAsync(_cts.Token));
+    }
+
+    public void CloseOutput()
+    {
+        _serverToClientWrite.Dispose();
+    }
+
+    public void SendWindowLogMessage(string message = "fake log message")
+    {
+        SendResponse(
+            new
+            {
+                jsonrpc = "2.0",
+                method = "window/logMessage",
+                @params = new { type = 3, message },
+            }
+        );
+    }
+
+    public void SendUnknownNotification(string method = "some/customNotification")
+    {
+        SendResponse(
+            new
+            {
+                jsonrpc = "2.0",
+                method,
+                @params = new { payload = 1 },
+            }
+        );
     }
 
     private async Task RunAsync(CancellationToken ct)

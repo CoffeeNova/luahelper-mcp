@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_syntax_error.lua",
+    "startLine": 0,
+    "startCharacter": 9,
+    "endLine": 0,
+    "endCharacter": 9,
+    "severity": 1,
+    "warningType": 0,
+    "message": "[Warn type:1], \u0060EOF\u0060 can not start",
+    "source": null
+  }
+]

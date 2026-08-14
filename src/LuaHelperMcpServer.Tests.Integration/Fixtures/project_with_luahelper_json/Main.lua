@@ -1,0 +1,5 @@
+local frame = CreateFrame("Frame")
+frame:SetSize(100, 100)
+local count = C_Container.GetContainerNumSlots(0)
+local aura = C_UnitAuras.GetPlayerAuraBySpellID(1)
+print(frame, count, aura)

@@ -74,4 +74,22 @@ public class ConfigToolsTests
             .DidNotReceive()
             .CreateDefaultConfig(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task CreateLuahelperJson_ValidDirectory_ReturnsCreatedMessage()
+    {
+        // Arrange
+        _configService
+            .CreateDefaultConfig(AppContext.BaseDirectory, Arg.Any<CancellationToken>())
+            .Returns("Created luahelper.json at C:\\project\\luahelper.json");
+
+        // Act
+        var result = await _tools.CreateLuahelperJson(
+            AppContext.BaseDirectory,
+            CancellationToken.None
+        );
+
+        // Assert
+        result.ShouldBe("Created luahelper.json at C:\\project\\luahelper.json");
+    }
 }

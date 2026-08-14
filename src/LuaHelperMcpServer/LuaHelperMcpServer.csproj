@@ -17,4 +17,9 @@
   <ItemGroup>
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>LuaHelperMcpServer.Tests.Unit</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>

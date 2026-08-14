@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using LuaHelperMcpServer.Services;
 
 namespace LuaHelperMcpServer.Tests.Unit.Helpers;
@@ -8,6 +7,7 @@ public sealed class MockProcessManager : IProcessManager
     private readonly FakeLspServer _fakeServer;
 
     public bool IsRunning => true;
+    public int EnsureRunningAsyncCalls { get; private set; }
     public event EventHandler? ProcessExited;
 
     public MockProcessManager(FakeLspServer fakeServer)
@@ -15,9 +15,13 @@ public sealed class MockProcessManager : IProcessManager
         _fakeServer = fakeServer;
     }
 
-    public Task EnsureRunningAsync(CancellationToken ct = default) => Task.CompletedTask;
+    public Task EnsureRunningAsync(CancellationToken ct = default)
+    {
+        EnsureRunningAsyncCalls++;
+        return Task.CompletedTask;
+    }
 
-    public Task<Process> GetProcessAsync(CancellationToken ct = default)
+    public Task<IProcessHandle> GetProcessAsync(CancellationToken ct = default)
     {
         throw new NotSupportedException("Use GetStreams() instead");
     }

@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "name": "Syntax errors",
+    "defaultOn": true
+  },
+  {
+    "id": 2,
+    "name": "Variable not defined",
+    "defaultOn": false
+  },
+  {
+    "id": 3,
+    "name": "Global used before defined",
+    "defaultOn": false
+  },
+  {
+    "id": 4,
+    "name": "Local defined but not used",
+    "defaultOn": false
+  },
+  {
+    "id": 5,
+    "name": "Duplicate table keys",
+    "defaultOn": true
+  },
+  {
+    "id": 6,
+    "name": "Referenced file not found",
+    "defaultOn": false
+  },
+  {
+    "id": 7,
+    "name": "Assignment param count mismatch",
+    "defaultOn": true
+  },
+  {
+    "id": 8,
+    "name": "Local definition param count mismatch",
+    "defaultOn": true
+  },
+  {
+    "id": 9,
+    "name": "Goto label not found",
+    "defaultOn": true
+  },
+  {
+    "id": 10,
+    "name": "Function call param count \u003E definition",
+    "defaultOn": false
+  },
+  {
+    "id": 11,
+    "name": "Import module var not defined",
+    "defaultOn": false
+  },
+  {
+    "id": 12,
+    "name": "If-not block error",
+    "defaultOn": false
+  },
+  {
+    "id": 13,
+    "name": "Duplicate function params",
+    "defaultOn": true
+  },
+  {
+    "id": 14,
+    "name": "Duplicate binary expression",
+    "defaultOn": false
+  },
+  {
+    "id": 15,
+    "name": "OR always true",
+    "defaultOn": false
+  },
+  {
+    "id": 16,
+    "name": "AND always false",
+    "defaultOn": false
+  },
+  {
+    "id": 17,
+    "name": "Unused assignment",
+    "defaultOn": false
+  },
+  {
+    "id": 18,
+    "name": "Annotation type warnings",
+    "defaultOn": true
+  },
+  {
+    "id": 19,
+    "name": "Duplicate if conditions",
+    "defaultOn": true
+  },
+  {
+    "id": 20,
+    "name": "Self-assignment",
+    "defaultOn": false
+  },
+  {
+    "id": 21,
+    "name": "Float equality",
+    "defaultOn": false
+  }
+]

@@ -1,0 +1,2 @@
+1 warning(s) in C:\Repository\luahelper-mcp\src\LuaHelperMcpServer.Tests.Integration\Fixtures\test_with_warning.lua:
+  L0:9 [Information] [Warn type:18], not define annotate type: Frame

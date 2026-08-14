@@ -24,21 +24,23 @@ jobs:
         shell: pwsh
         run: .\.github\tools\fetch-lualsp.ps1 -Rid win-x64 -Update
 
-      - name: Build solution
+      - name: Build solution (Release)
         shell: pwsh
-        run: .\.github\tools\build.ps1
+        run: .\.github\tools\build.ps1 -Configuration Release
 
-      - name: Unit tests
+      - name: Unit tests + coverage gate
         shell: pwsh
-        run: dotnet test src\LuaHelperMcpServer.Tests.Unit -c Release
+        run: |
+          dotnet test src\LuaHelperMcpServer.Tests.Unit -c Release `
+            -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura -p:Threshold=80 -p:ThresholdType=line
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Integration tests
         shell: pwsh
         run: |
-          $ext = Join-Path $env:TEMP "luahelper-ext-ci"
-          New-Item -ItemType Directory -Path (Join-Path $ext "server") -Force | Out-Null
-          Copy-Item lualsp\win-x64\lualsp.exe (Join-Path $ext "server\lualsp.exe") -Force
-          $env:LUAHELPER_EXTENSION_PATH = $ext
+          $exe = (Resolve-Path lualsp\win-x64\lualsp.exe).Path
+          $env:LUAHELPER_LUALSP_PATH = $exe
+          $env:LUAHELPER_MCP_SERVER_PATH = "dotnet;$((Resolve-Path src\LuaHelperMcpServer\bin\Release\net10.0\LuaHelperMcpServer.dll).Path)"
           dotnet test src\LuaHelperMcpServer.Tests.Integration -c Release
 
   aot-win-x64:

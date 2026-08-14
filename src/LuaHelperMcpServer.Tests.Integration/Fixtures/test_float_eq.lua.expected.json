@@ -1,0 +1,13 @@
+[
+  {
+    "uri": "file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_float_eq.lua",
+    "startLine": 0,
+    "startCharacter": 3,
+    "endLine": 0,
+    "endCharacter": 13,
+    "severity": 2,
+    "warningType": 0,
+    "message": "[Warn type:21], float compare error",
+    "source": null
+  }
+]
