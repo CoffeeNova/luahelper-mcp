@@ -530,7 +530,16 @@ With mocked `ILspClient`, `IDiagnosticCache`, `IConfigService`:
    - If none exists → `Assert.Fail("lualsp.exe not found. Run .github/tools/fetch-lualsp.ps1 first.")`.
 2. `LuaHelperMcpServer` binary:
    - `LUAHELPER_MCP_SERVER_PATH` env (exe or dll) → use as-is (exe) or `dotnet <dll>`.
-   - else default: `dotnet <repoRoot>\src\LuaHelperMcpServer\bin\Release\net10.0\LuaHelperMcpServer.dll` (or `Debug` if Release absent).
+   - else default: **the most recently built** of
+     `<repoRoot>\src\LuaHelperMcpServer\bin\Release\net10.0\LuaHelperMcpServer.dll`
+     and the `Debug` equivalent (by `LastWriteTimeUtc`), run via `dotnet <dll>`.
+     - **Deviation from the original plan** (was: "Release, or Debug if Release
+       absent"): a stale Release DLL from an older commit (e.g. one built before
+       prompts/resources were registered) shadows the fresh Debug build that
+       `dotnet test` produces and fails every golden comparison. CI sets
+       `LUAHELPER_MCP_SERVER_PATH` explicitly, so this fallback only matters for
+       local runs — where "newest" is exactly the binary that matches the
+       checked-out sources.
    - If absent → `Assert.Fail(...)`.
 
 The fixture sets `LUAHELPER_LUALSP_PATH` (absolute) on every spawned server
@@ -590,6 +599,17 @@ alongside (e.g. `test_with_warning.lua.expected.json`) containing the exact
 output changes, the developer re-runs, updates the `.expected.json`, and commits
 both.
 
+**Goldens are machine-independent.** `GoldenCaptureTests` normalizes
+machine-specific absolute paths to placeholders **before writing** a golden:
+`SourceFixturesDir`/`FixturesDir` → `FIXTURES`, the lualsp.exe directory →
+`LUALSP_DIR`, the capture temp dir → `TMP` (both raw and JSON-escaped forms).
+The integration tests apply the same normalization to actual output before
+comparing, so a golden captured on one machine asserts correctly on any other.
+**Deviation from the original plan:** the first committed goldens were captured
+raw on a machine with the repo at `C:\Repository\luahelper-mcp` (user
+`Ihar_Salzhanitsyn`), which made every path-bearing golden fail on any other
+machine; capture-time normalization fixes this permanently.
+
 ### 6.4 LSP-layer integration tests (expand `LspClientIntegrationTests`)
 
 Real `lualsp.exe`, via `LspClient` + `ProcessManager` (existing pattern).
@@ -606,6 +626,13 @@ Real `lualsp.exe`, via `LspClient` + `ProcessManager` (existing pattern).
 | `CheckFile_FloatEq_MatchesGolden` (NEW) | golden (enable CheckFloatEq) |
 | `LuahelperJson_IgnoredModules_ProduceNoDiagnostics` (exists) | empty |
 | `LuahelperJson_MissingIgnoreModules_FlagsUndefinedGlobal` (exists) | exact |
+**Deterministic project-file order.** `CheckLuaProject` now orders the scanned
+`.lua` files with `OrderBy(f => f, StringComparer.Ordinal)` so the summary +
+per-file output is stable across filesystems (the original plan left the order
+to `Directory.EnumerateFiles`, which is filesystem-dependent and made the
+`check_lua_project.expected.txt` golden non-reproducible). Recorded as a
+deviation: small production change mandated by the golden-exactness goal (G5).
+
 | `Reinitialize_SameProject_IsNoop` (NEW) | state stays Ready, no re-init |
 | `Reinitialize_DifferentProject_Reinitializes` (NEW) | new projectPath |
 | `Shutdown_ThenReopen_Works` (NEW) | state transitions |

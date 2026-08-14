@@ -113,10 +113,13 @@ public sealed class IntegrationTestFixture
             "LuaHelperMcpServer.dll"
         );
 
-        var dll =
-            File.Exists(releaseDll) ? releaseDll
-            : File.Exists(debugDll) ? debugDll
-            : null;
+        // Prefer the most recently built binary: a stale Release DLL from an
+        // older commit would otherwise shadow the fresh Debug build produced by
+        // `dotnet test` and fail every golden comparison.
+        var dll = new[] { releaseDll, debugDll }
+            .Where(File.Exists)
+            .OrderByDescending(p => File.GetLastWriteTimeUtc(p))
+            .FirstOrDefault();
         if (dll != null)
             return ("dotnet", dll);
 

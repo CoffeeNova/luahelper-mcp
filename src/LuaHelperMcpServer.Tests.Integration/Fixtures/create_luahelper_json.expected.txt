@@ -1,1 +1,1 @@
-Created luahelper.json at C:\Users\Ihar_Salzhanitsyn\AppData\Local\Temp\luahelper-mcp-capture-create\luahelper.json
+Created luahelper.json at TMP\luahelper.json

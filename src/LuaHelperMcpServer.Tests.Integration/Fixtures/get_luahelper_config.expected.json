@@ -1,7 +1,7 @@
 {
-  "projectPath": "C:\\Repository\\luahelper-mcp\\src\\LuaHelperMcpServer.Tests.Integration\\Fixtures",
+  "projectPath": "FIXTURES",
   "client": "vsc",
-  "pluginPath": "C:\\Repository\\luahelper-mcp\\lualsp\\win-x64",
+  "pluginPath": "LUALSP_DIR",
   "allEnable": true,
   "checkSyntax": true,
   "checkNoDefine": false,

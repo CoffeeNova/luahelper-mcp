@@ -35,17 +35,40 @@ public class GoldenCaptureTests
     private string GoldenPath(string fileName) =>
         Path.Combine(_fixture.SourceFixturesDir, fileName);
 
+    // Goldens must be machine-independent: absolute paths are replaced with
+    // the same placeholders the integration tests normalize actual output to,
+    // so a golden captured on one machine asserts correctly on any other.
+    private string NormalizeForCapture(string text)
+    {
+        var lualspDir = Path.GetDirectoryName(_fixture.LualspPath) ?? string.Empty;
+        var captureTempDir = Path.Combine(Path.GetTempPath(), "luahelper-mcp-capture-create");
+        return text.Replace(_fixture.SourceFixturesDir, "FIXTURES", StringComparison.Ordinal)
+            .Replace(Escaped(_fixture.SourceFixturesDir), "FIXTURES", StringComparison.Ordinal)
+            .Replace(_fixture.FixturesDir, "FIXTURES", StringComparison.Ordinal)
+            .Replace(Escaped(_fixture.FixturesDir), "FIXTURES", StringComparison.Ordinal)
+            .Replace(lualspDir, "LUALSP_DIR", StringComparison.Ordinal)
+            .Replace(Escaped(lualspDir), "LUALSP_DIR", StringComparison.Ordinal)
+            .Replace(captureTempDir, "TMP", StringComparison.Ordinal)
+            .Replace(Escaped(captureTempDir), "TMP", StringComparison.Ordinal);
+    }
+
+    private static string Escaped(string path) =>
+        path.Replace("\\", "\\\\", StringComparison.Ordinal);
+
     private void WriteJson(string fileName, JsonNode node)
     {
-        var json = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        var json = NormalizeForCapture(
+            node.ToJsonString(new JsonSerializerOptions { WriteIndented = true })
+        );
         File.WriteAllText(GoldenPath(fileName), json);
         TestContext.Progress.WriteLine($"--- {fileName} ---\n{json}");
     }
 
     private void WriteText(string fileName, string text)
     {
-        File.WriteAllText(GoldenPath(fileName), text);
-        TestContext.Progress.WriteLine($"--- {fileName} ---\n{text}");
+        var normalized = NormalizeForCapture(text);
+        File.WriteAllText(GoldenPath(fileName), normalized);
+        TestContext.Progress.WriteLine($"--- {fileName} ---\n{normalized}");
     }
 
     private string InnerText(JsonNode toolResponse)

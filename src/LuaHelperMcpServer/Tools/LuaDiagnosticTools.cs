@@ -190,6 +190,7 @@ public sealed class LuaDiagnosticTools
         var luaFiles = Directory
             .EnumerateFiles(projectPath, "*.lua", SearchOption.AllDirectories)
             .Where(f => !IsIgnoredFile(f, ignoreDirs))
+            .OrderBy(f => f, StringComparer.Ordinal)
             .ToList();
 
         foreach (var file in luaFiles)

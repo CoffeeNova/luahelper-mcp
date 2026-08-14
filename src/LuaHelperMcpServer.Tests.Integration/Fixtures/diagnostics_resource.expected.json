@@ -2,9 +2,9 @@
   "result": {
     "contents": [
       {
-        "uri": "luahelper://diagnostics/C:\\Repository\\luahelper-mcp\\src\\LuaHelperMcpServer.Tests.Integration\\Fixtures\\test_with_warning.lua",
+        "uri": "luahelper://diagnostics/FIXTURES\\test_with_warning.lua",
         "mimeType": "application/json",
-        "text": "[\r\n  {\r\n    \u0022uri\u0022: \u0022file:///C:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_with_warning.lua\u0022,\r\n    \u0022startLine\u0022: 0,\r\n    \u0022startCharacter\u0022: 9,\r\n    \u0022endLine\u0022: 0,\r\n    \u0022endCharacter\u0022: 14,\r\n    \u0022severity\u0022: 3,\r\n    \u0022warningType\u0022: 0,\r\n    \u0022message\u0022: \u0022[Warn type:18], not define annotate type: Frame\u0022,\r\n    \u0022source\u0022: null\r\n  }\r\n]"
+        "text": "[\r\n  {\r\n    \u0022uri\u0022: \u0022file:///E:/Repository/luahelper-mcp/src/LuaHelperMcpServer.Tests.Integration/Fixtures/test_with_warning.lua\u0022,\r\n    \u0022startLine\u0022: 0,\r\n    \u0022startCharacter\u0022: 9,\r\n    \u0022endLine\u0022: 0,\r\n    \u0022endCharacter\u0022: 14,\r\n    \u0022severity\u0022: 3,\r\n    \u0022warningType\u0022: 0,\r\n    \u0022message\u0022: \u0022[Warn type:18], not define annotate type: Frame\u0022,\r\n    \u0022source\u0022: null\r\n  }\r\n]"
       }
     ]
   },
