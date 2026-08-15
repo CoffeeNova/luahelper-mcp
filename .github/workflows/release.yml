@@ -184,6 +184,34 @@ jobs:
           path: vscode-extension/luahelper-mcp-*.vsix
           retention-days: 14
 
+  publish-marketplace:
+    name: Publish VSIX to Marketplace
+    needs: [version, build-vsix]
+    if: needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: luahelper-mcp-${{ needs.version.outputs.version }}.vsix
+          path: vsix
+
+      - name: Publish to Marketplace
+        if: env.VSCE_PAT != ''
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npx --yes @vscode/vsce publish --packagePath vsix/luahelper-mcp-${{ needs.version.outputs.version }}.vsix --skip-duplicate
+
+      - name: Warn on missing PAT
+        if: env.VSCE_PAT == ''
+        run: echo "::warning::VSCE_PAT not configured - skipping Marketplace publish."
+
   release:
     name: Create GitHub release
     needs: [version, build-server, build-vsix]

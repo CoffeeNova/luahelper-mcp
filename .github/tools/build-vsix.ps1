@@ -28,7 +28,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $root
 
-Write-Host "== Step 1/4: Ensure lualsp.exe bundle ==" -ForegroundColor Cyan
+Write-Host "== Step 1/5: Ensure lualsp.exe bundle ==" -ForegroundColor Cyan
 if ($SkipFetch) {
     if (-not (Test-Path "lualsp/win-x64/lualsp.exe")) {
         Write-Host "Bundle missing at lualsp/win-x64/lualsp.exe and -SkipFetch was set." -ForegroundColor Red
@@ -46,7 +46,17 @@ if ($Version) {
     Write-Host "Stamping version: $Version" -ForegroundColor Yellow
 }
 
-Write-Host "== Step 2/4: Publish .NET MCP server ==" -ForegroundColor Cyan
+Write-Host "== Step 2/5: Clean previous publish output ==" -ForegroundColor Cyan
+$extensionKeep = @(
+    'package.json', 'package-lock.json', 'extension.ts', 'tsconfig.json',
+    '.vscodeignore', 'README.md', 'CHANGELOG.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md',
+    'node_modules', 'out', 'images'
+)
+Get-ChildItem -LiteralPath 'vscode-extension' -Force |
+    Where-Object { $extensionKeep -notcontains $_.Name } |
+    Remove-Item -Recurse -Force
+
+Write-Host "== Step 3/5: Publish .NET MCP server ==" -ForegroundColor Cyan
 dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained `
     -p:PublishAot=true -p:InvariantGlobalization=true @versionArgs -o vscode-extension
 if ($LASTEXITCODE -ne 0) {
@@ -57,12 +67,12 @@ if ($LASTEXITCODE -ne 0) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-Write-Host "== Step 3/4: Copy lualsp.exe bundle ==" -ForegroundColor Cyan
+Write-Host "== Step 4/5: Copy lualsp.exe bundle ==" -ForegroundColor Cyan
 New-Item -ItemType Directory -Path "vscode-extension/lualsp/win-x64" -Force | Out-Null
 Copy-Item "lualsp/win-x64/lualsp.exe" "vscode-extension/lualsp/win-x64/lualsp.exe" -Force
 Copy-Item "lualsp/version.json" "vscode-extension/lualsp/version.json" -Force
 
-Write-Host "== Step 4/4: Install dependencies and package extension ==" -ForegroundColor Cyan
+Write-Host "== Step 5/5: Install dependencies and package extension ==" -ForegroundColor Cyan
 $pkgPath = "vscode-extension/package.json"
 $pkgBackup = $null
 if ($Version) {
@@ -79,7 +89,7 @@ try {
     }
     & $npmCmd.Source ci --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    npx --yes @vscode/vsce package --allow-missing-repository
+    npx --yes @vscode/vsce package
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 finally {

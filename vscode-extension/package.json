@@ -2,23 +2,43 @@
   "name": "luahelper-mcp",
   "displayName": "LuaHelper MCP Server",
   "description": "MCP server for Lua diagnostics powered by LuaHelper",
-  "version": "0.1.0",
-  "publisher": "your-publisher-id",
+  "version": "0.1.2",
+  "publisher": "Coffeejelly",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/CoffeeNova/luahelper-mcp.git"
   },
-"engines": {
+  "engines": {
     "vscode": "^1.101.0"
   },
   "categories": [
     "Linters",
     "Programming Languages"
   ],
+  "keywords": [
+    "lua",
+    "luahelper",
+    "linter",
+    "lint",
+    "diagnostics",
+    "static analysis",
+    "mcp",
+    "model context protocol",
+    "copilot",
+    "copilot chat",
+    "ai assistant",
+    "language server",
+    "vscode"
+  ],
   "main": "./out/extension.js",
   "activationEvents": [],
-"contributes": {
+  "contributes": {
     "mcpServerDefinitionProviders": [
       {
         "id": "luahelper",
@@ -28,11 +48,13 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./"
+    "compile": "tsc -p ./",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/vscode": "^1.101.0",
     "@types/node": "^20.0.0",
+    "@vscode/vsce": "^3.9.2",
     "typescript": "^5.4.0"
   }
 }

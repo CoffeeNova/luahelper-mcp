@@ -1254,6 +1254,24 @@ dotnet publish src\LuaHelperMcpServer -c Release -r win-x64 --self-contained -p:
 
 **Deviation (sixth — design change):** release and CI ran in **parallel** on a push (GitHub semantics), so a red CI could still produce a release. `release.yml` now triggers via `workflow_run` on CI completion instead of `push`; the `version` job throws unless the CI run concluded `success` on `main` or a `vX.Y.Z` tag (PR/other-branch CI runs are rejected), and all checkouts pin `github.event.workflow_run.head_sha` so the release builds exactly what CI tested. `ci.yml` gained `tags: ["v*"]` so tag pushes also get CI-gated. The tag/version signal now comes from `workflow_run.head_branch` (tag name for tag pushes, `main` otherwise). A `concurrency` group serializes release runs; `workflow_dispatch` remains for manual releases.
 
+### Step 5.6: VS Code Marketplace readiness
+
+**Tasks (completed Aug 2026):**
+1. `vscode-extension/package.json` - real publisher id `Coffeejelly`, version bumped to `0.1.2` (aligns with the latest GitHub release), `keywords`, `galleryBanner`, `icon` (`images/icon.png` - AI-generated 128x128, replaced the placeholder), `@vscode/vsce` devDependency, and a `publish` npm script (`vsce publish`).
+2. `build-vsix.ps1` - now **cleans** previous server publish output before `dotnet publish -o vscode-extension` (whitelists `package.json`, `package-lock.json`, `extension.ts`, `tsconfig.json`, `.vscodeignore`, `README.md`, `CHANGELOG.md`, `LICENSE`, `THIRD-PARTY-NOTICES.md`, `node_modules`, `out`, `images`), so stale self-contained `.dll` files from a local fallback publish no longer bloat the `.vsix`; dropped the now-obsolete `--allow-missing-repository` (the `repository` field is set). Steps renumbered to 5.
+3. `release.yml` - new `publish-marketplace` job downloads the VSIX artifact and runs `vsce publish --packagePath ... --skip-duplicate`; gated on the `VSCE_PAT` secret (`env.VSCE_PAT != ''`), so it skips with a warning until a credential is configured. This is the **automated** publish path - it runs on every new release (after CI passes), so the extension reaches the Marketplace without any manual step.
+4. `vscode-extension/CHANGELOG.md` - created from git history / GitHub release tags (v0.1.0, v0.1.1, v0.1.2), Keep a Changelog format.
+
+**Manual vs automated publishing (per the official guide):**
+- **Manual (done, no Azure DevOps needed):** publisher `Coffeejelly` registered at https://marketplace.visualstudio.com/manage; the `.vsix` is uploaded by drag-and-drop on that page.
+- **Automated (the release pipeline above):** `vsce publish` needs a credential. Two options - (a) a Personal Access Token from Azure DevOps (`Marketplace > Manage` scope) stored as the `VSCE_PAT` secret - requires a (free) Azure DevOps org to mint the token, not an org to publish; (b) Microsoft Entra ID workload identity federation + managed identity with `vsce publish --azure-credential` (the guide's recommended path - global Azure DevOps PATs are **retired on 2026-12-01**).
+
+**DoD:**
+- [x] Publisher `Coffeejelly` registered on the VS Marketplace (manual drag-and-drop publish works, no Azure DevOps org required)
+- [x] AI-generated 128x128 icon at `vscode-extension/images/icon.png`
+- [x] Release pipeline auto-publishes the VSIX on each new release (job `publish-marketplace`)
+- [ ] `VSCE_PAT` secret configured (or Entra ID managed identity) so the automated job actually runs
+
 ---
 
 ## Quick Reference: All MCP Tools
